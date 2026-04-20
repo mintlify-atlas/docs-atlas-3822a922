@@ -1,0 +1,200 @@
+---
+title: "Configure and initialize CleverTap Android SDK"
+description: "Advanced initialization for the CleverTap Android SDK: multiple instances, debug levels, analytics-only mode, Google Ad ID, and custom proxy domains."
+---
+
+After completing the basic setup from the [quickstart](/quickstart), you can tune how the SDK initializes and behaves. This page covers retrieving the default instance, creating additional instances for multiple CleverTap accounts, and the configuration options available on `CleverTapInstanceConfig`.
+
+## Getting the default instance
+
+The SDK creates a shared singleton automatically from the credentials in `AndroidManifest.xml`. Retrieve it by calling `getDefaultInstance`:
+
+<Tabs>
+  <Tab title="Java">
+    ```java
+    CleverTapAPI clevertap = CleverTapAPI.getDefaultInstance(getApplicationContext());
+    ```
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    val clevertap = CleverTapAPI.getDefaultInstance(applicationContext)
+    ```
+  </Tab>
+</Tabs>
+
+This method returns `null` when `CLEVERTAP_ACCOUNT_ID` or `CLEVERTAP_TOKEN` are missing from the manifest, so always null-check the result before using the instance.
+
+## Creating additional instances
+
+Starting with SDK version 3.2.0 you can send data to multiple CleverTap accounts from the same app. Each additional account requires its own `CleverTapInstanceConfig` object.
+
+<Warning>
+  All configuration on a `CleverTapInstanceConfig` object must be completed before passing it to `CleverTapAPI.instanceWithConfig`. Changes made to the config object after that call have no effect on the created instance.
+</Warning>
+
+<Tabs>
+  <Tab title="Java">
+    ```java
+    CleverTapInstanceConfig config = CleverTapInstanceConfig.createInstance(
+        context,
+        "ADDITIONAL_CLEVERTAP_ACCOUNT_ID",
+        "ADDITIONAL_CLEVERTAP_ACCOUNT_TOKEN"
+    );
+
+    // Apply configuration before creating the instance
+    config.setDebugLevel(CleverTapAPI.LogLevel.DEBUG);
+    config.setAnalyticsOnly(true);
+    config.useGoogleAdId(true);
+
+    CleverTapAPI additionalInstance = CleverTapAPI.instanceWithConfig(clevertapAdditionalInstanceConfig);
+    ```
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    val config = CleverTapInstanceConfig.createInstance(
+        context,
+        "ADDITIONAL_CLEVERTAP_ACCOUNT_ID",
+        "ADDITIONAL_CLEVERTAP_ACCOUNT_TOKEN"
+    )
+
+    // Apply configuration before creating the instance
+    config.setDebugLevel(CleverTapAPI.LogLevel.DEBUG)
+    config.setAnalyticsOnly(true)
+    config.useGoogleAdId(true)
+
+    val additionalInstance = CleverTapAPI.instanceWithConfig(config)
+    ```
+  </Tab>
+</Tabs>
+
+Call `CleverTapAPI.instanceWithConfig` with the same config object whenever you need to access that instance again — the SDK returns the already-created instance.
+
+## Configuration options
+
+The following options are set on a `CleverTapInstanceConfig` object before calling `instanceWithConfig`.
+
+### Debug level
+
+Controls the verbosity of SDK log output. The default is `CleverTapAPI.LogLevel.INFO`.
+
+<Tabs>
+  <Tab title="Java">
+    ```java
+    config.setDebugLevel(CleverTapAPI.LogLevel.DEBUG);
+    ```
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    config.setDebugLevel(CleverTapAPI.LogLevel.DEBUG)
+    ```
+  </Tab>
+</Tabs>
+
+### Analytics-only mode
+
+Disables user engagement features (in-app notifications, app inbox, push) for the instance, limiting it to analytics event recording only. Default is `false`.
+
+<Tabs>
+  <Tab title="Java">
+    ```java
+    config.setAnalyticsOnly(true);
+    ```
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    config.setAnalyticsOnly(true)
+    ```
+  </Tab>
+</Tabs>
+
+### Google Ad ID collection
+
+Enables collection of the Google Advertising ID (ADID) by the instance. Default is `false`. Requires the `play-services-ads` dependency.
+
+<Tabs>
+  <Tab title="Java">
+    ```java
+    config.useGoogleAdId(true);
+    ```
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    config.useGoogleAdId(true)
+    ```
+  </Tab>
+</Tabs>
+
+### Proxy domain
+
+Routes SDK events through your own domain instead of CleverTap's default endpoints. Set `proxyDomain` for general events and `spikyProxyDomain` for push impression events.
+
+<Tabs>
+  <Tab title="Java">
+    ```java
+    config.setProxyDomain("your.proxy.domain");
+    config.setSpikyProxyDomain("your.spiky.proxy.domain");
+    ```
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    config.setProxyDomain("your.proxy.domain")
+    config.setSpikyProxyDomain("your.spiky.proxy.domain")
+    ```
+  </Tab>
+</Tabs>
+
+You can also set proxy domains for the default instance via `AndroidManifest.xml`:
+
+```xml AndroidManifest.xml
+<meta-data
+    android:name="CLEVERTAP_PROXY_DOMAIN"
+    android:value="your.proxy.domain" />
+<meta-data
+    android:name="CLEVERTAP_SPIKY_PROXY_DOMAIN"
+    android:value="your.spiky.proxy.domain" />
+```
+
+## Custom CleverTap ID
+
+By default, the SDK assigns its own identifier to each user. If you want to supply your own unique ID per user, enable custom CleverTap IDs.
+
+**Step 1** — Add the manifest flag:
+
+```xml AndroidManifest.xml
+<meta-data
+    android:name="CLEVERTAP_USE_CUSTOM_ID"
+    android:value="1" />
+```
+
+**Step 2** — Pass the custom ID when registering the lifecycle callback or when retrieving the default instance:
+
+<Tabs>
+  <Tab title="Java">
+    ```java
+    // Option A: pass ID during lifecycle registration
+    ActivityLifecycleCallback.register(this, "uniqueCustomClevertapIDForUser");
+
+    // Option B: pass ID when getting the default instance
+    CleverTapAPI clevertap = CleverTapAPI.getDefaultInstance(
+        getApplicationContext(),
+        "uniqueCustomClevertapIDForUser"
+    );
+    ```
+  </Tab>
+  <Tab title="Kotlin">
+    ```kotlin
+    // Option A: pass ID during lifecycle registration
+    ActivityLifecycleCallback.register(this, "uniqueCustomClevertapIDForUser")
+
+    // Option B: pass ID when getting the default instance
+    val clevertap = CleverTapAPI.getDefaultInstance(
+        applicationContext,
+        "uniqueCustomClevertapIDForUser"
+    )
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  The custom ID must be unique per user across all devices. Using duplicate IDs will cause user profile merging issues in the CleverTap dashboard.
+</Note>

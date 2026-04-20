@@ -1,0 +1,170 @@
+---
+title: "Display in-app notifications with CleverTap"
+description: "Register the in-app activity, exclude screens, suspend and resume the queue, handle button callbacks, and pre-fetch in-app campaigns in your Android app."
+---
+
+CleverTap in-app notifications are modal overlays — banners, interstitials, half-interstitials, and web-based messages — that appear while the user is actively using your app. The SDK manages the display queue automatically; you control which activities are eligible to show in-apps and can pause or clear the queue at any time.
+
+## AndroidManifest.xml setup
+
+Register `InAppNotificationActivity` so the SDK has a container to render full-screen and interstitial in-app types. Use `CLEVERTAP_INAPP_EXCLUDE` to list activities where in-apps should never appear, such as splash or onboarding screens.
+
+```xml AndroidManifest.xml
+<activity
+    android:name="com.clevertap.android.sdk.InAppNotificationActivity"
+    android:theme="@android:style/Theme.Translucent.NoTitleBar"
+    android:configChanges="orientation|keyboardHidden"/>
+
+<meta-data
+    android:name="CLEVERTAP_INAPP_EXCLUDE"
+    android:value="YourSplashActivity1, YourSplashActivity2" />
+```
+
+<Note>
+The `ActivityLifecycleCallback` registration (setting `android:name` on your `<application>` tag, or calling `ActivityLifecycleCallback.register(this)` in a custom Application class) is required for in-app notifications to work. Without it, the SDK cannot track the active foreground activity and will not display in-apps.
+</Note>
+
+## Suspending, resuming, and discarding in-apps
+
+You can pause the in-app queue during time-sensitive flows — such as a checkout sequence — and resume it when the user is ready to be interrupted again. Discarding clears the queue entirely.
+
+<CodeGroup>
+
+```java Java
+CleverTapAPI clevertap = CleverTapAPI.getDefaultInstance(getApplicationContext());
+
+// Pause delivery; in-apps accumulate in the queue
+clevertap.suspendInAppNotifications();
+
+// Resume delivery; queued in-apps show immediately
+clevertap.resumeInAppNotifications();
+
+// Discard the queue; accumulated in-apps are dropped
+clevertap.discardInAppNotifications();
+```
+
+```kotlin Kotlin
+val clevertap = CleverTapAPI.getDefaultInstance(applicationContext)
+
+// Pause delivery; in-apps accumulate in the queue
+clevertap?.suspendInAppNotifications()
+
+// Resume delivery; queued in-apps show immediately
+clevertap?.resumeInAppNotifications()
+
+// Discard the queue; accumulated in-apps are dropped
+clevertap?.discardInAppNotifications()
+```
+
+</CodeGroup>
+
+## In-app notification button listener
+
+Implement `InAppNotificationButtonListener` on your activity or fragment to receive the key-value payload when a user taps a custom button action in an in-app notification.
+
+<CodeGroup>
+
+```java Java
+public class MainActivity extends AppCompatActivity implements InAppNotificationButtonListener {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        CleverTapAPI clevertap = CleverTapAPI.getDefaultInstance(this);
+        if (clevertap != null) {
+            clevertap.setInAppNotificationButtonListener(this);
+        }
+    }
+
+    @Override
+    public void onInAppButtonClick(HashMap<String, String> payload) {
+        // Handle the key-value pairs attached to the button
+    }
+}
+```
+
+```kotlin Kotlin
+class MainActivity : AppCompatActivity(), InAppNotificationButtonListener {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val clevertap = CleverTapAPI.getDefaultInstance(this)
+        clevertap?.setInAppNotificationButtonListener(this)
+    }
+
+    override fun onInAppButtonClick(payload: HashMap<String, String>) {
+        // Handle the key-value pairs attached to the button
+    }
+}
+```
+
+</CodeGroup>
+
+## JavaScript interface for web-based in-apps
+
+For HTML in-app notifications, you can add a `CTWebInterface` to the WebView so that JavaScript in the in-app template can call native SDK methods — for example, to trigger the OS push permission dialog or dismiss the in-app from within the web content.
+
+The following JavaScript methods are available inside the in-app's HTML:
+
+```html HTML in-app template
+<script>
+// Trigger the OS notification permission dialog
+// Pass true to fall back to app notification settings if permission was previously denied
+document.querySelector('#allow-btn').addEventListener('click', function(e) {
+    if (window.CleverTap) {
+        CleverTap.promptPushPermission(true);
+    }
+});
+
+// Dismiss the current in-app notification
+document.querySelector('#close-btn').addEventListener('click', function(e) {
+    if (window.CleverTap) {
+        CleverTap.dismissInAppNotification();
+    }
+});
+</script>
+```
+
+## In-app notification show callback
+
+From SDK v4.7.0+, implement `InAppNotificationListener` and override `onShow` to be notified when an in-app is presented to the user.
+
+<CodeGroup>
+
+```java Java
+@Override
+public void onShow(CTInAppNotification ctInAppNotification) {
+    // In-app has been displayed
+}
+```
+
+```kotlin Kotlin
+override fun onShow(ctInAppNotification: CTInAppNotification) {
+    // In-app has been displayed
+}
+```
+
+</CodeGroup>
+
+## Pre-fetching in-app campaigns
+
+Call `fetchInApps` to pull the latest in-app campaigns from CleverTap servers immediately rather than waiting for the next app session sync.
+
+<CodeGroup>
+
+```java Java
+clevertap.fetchInApps(new FetchInAppsCallback() {
+    @Override
+    public void onInAppsFetched(boolean isSuccess) {
+        // isSuccess is true if the fetch completed without error
+    }
+});
+```
+
+```kotlin Kotlin
+clevertap?.fetchInApps { isSuccess ->
+    // isSuccess is true if the fetch completed without error
+}
+```
+
+</CodeGroup>

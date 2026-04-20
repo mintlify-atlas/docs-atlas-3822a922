@@ -1,0 +1,72 @@
+---
+title: "Improve push delivery with CleverTap RenderMax"
+description: "RenderMax SDK improves push delivery on battery-optimized Android devices where FCM is suppressed by Doze mode or manufacturer background restrictions."
+---
+
+On Android, aggressive battery-optimization policies and Doze mode can prevent FCM messages from being received and displayed in a timely manner—or at all. CleverTap RenderMax is a lightweight SDK extension that provides an alternative delivery path so notifications reach users even when FCM is unable to wake the device. It integrates directly with the CleverTap core SDK and requires no changes to your existing notification handling logic.
+
+<Info>
+RenderMax is most impactful for apps with users on heavily customized Android skins (MIUI, ColorOS, FuntouchOS, and similar) that enforce strict background process restrictions. It works alongside FCM rather than replacing it: if FCM delivers the notification first, RenderMax takes no action.
+</Info>
+
+## Compatibility
+
+| SDK | Minimum version |
+|-----|----------------|
+| CleverTap Android SDK | v4.6.6 |
+| React Native SDK | v0.9.3 |
+| Flutter SDK | v1.5.5 |
+
+## Add the dependency
+
+Add the RenderMax SDK to the `dependencies` block in your app-level `build.gradle`:
+
+```groovy
+dependencies {
+    implementation "com.clevertap.android:clevertap-rendermax-sdk:1.0.3"
+}
+```
+
+No additional repository entries are required beyond those already present for the CleverTap core SDK.
+
+## Integration steps
+
+<Steps>
+  <Step title="Add the dependency">
+    Add `clevertap-rendermax-sdk` to your app's `build.gradle` as shown above. Sync your project to download the artifact.
+  </Step>
+
+  <Step title="Handle custom notification rendering (if applicable)">
+    If your app intercepts push payloads and renders notifications itself—without passing the payload to the CleverTap SDK—add the following call before you render the notification. This allows RenderMax to track delivery and prevent duplicate notifications:
+
+    ```java
+    CleverTapAPI.processPushNotification(getApplicationContext(), extras);
+    ```
+
+    Apps that rely on the standard CleverTap notification rendering pipeline do not need this step.
+  </Step>
+
+  <Step title="Verify Proguard configuration">
+    RenderMax is distributed as an obfuscated package. Proguard rules are bundled in the SDK's `consumer-rules.pro` file and are merged into your app's Proguard configuration automatically during the build—no manual rule additions are required.
+
+    To confirm the rules were applied, build a release variant and search for the `RenderMax` keyword in `build/outputs/mapping/configuration.txt`.
+  </Step>
+</Steps>
+
+## How RenderMax works
+
+RenderMax registers a secondary delivery mechanism alongside FCM. When a CleverTap push notification is sent:
+
+1. FCM attempts to deliver the notification as usual.
+2. If FCM delivery fails or the device's battery optimization prevents the message from being processed, RenderMax's channel delivers and renders the notification independently.
+3. If FCM already rendered the notification, RenderMax detects the duplicate and suppresses its own rendering.
+
+The result is a higher effective delivery rate on devices where Doze mode, background restrictions, or manufacturer-level FCM throttling would otherwise cause silent drop.
+
+<Info>
+RenderMax does not require any server-side changes or additional CleverTap dashboard configuration. Enabling it is purely an SDK-side integration.
+</Info>
+
+## Changelog
+
+The full RenderMax changelog is available in the [CleverTap Android SDK repository](https://github.com/CleverTap/clevertap-android-sdk/blob/master/docs/CTRENDERMAXCHANGELOG.md).

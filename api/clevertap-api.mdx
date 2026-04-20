@@ -1,0 +1,676 @@
+---
+title: "CleverTapAPI Android class reference"
+description: "Complete public API reference for the CleverTapAPI class, covering instance creation, analytics, user profiles, in-app notifications, and Variables."
+---
+
+`CleverTapAPI` is the primary entry point for all CleverTap SDK functionality. Every interaction with the SDK — tracking events, updating user profiles, controlling in-app notifications, and managing Variables — goes through an instance of this class. The default instance is backed by credentials supplied in `AndroidManifest.xml`; additional instances can be created with a `CleverTapInstanceConfig` object for multi-account setups.
+
+## Instance creation
+
+The SDK supports a single default instance as well as multiple named instances for advanced multi-account scenarios.
+
+### `getDefaultInstance(Context)`
+
+Returns the default shared instance of the CleverTap SDK, initialising it from the account ID and token declared in `AndroidManifest.xml` if it has not been created yet.
+
+<ParamField path="context" type="Context" required>
+  The Android application context.
+</ParamField>
+
+<ResponseField name="return" type="CleverTapAPI">
+  The default `CleverTapAPI` instance, or `null` if the credentials are missing from the manifest.
+</ResponseField>
+
+```java java
+CleverTapAPI cleverTap = CleverTapAPI.getDefaultInstance(getApplicationContext());
+```
+
+```kotlin kotlin
+val cleverTap = CleverTapAPI.getDefaultInstance(applicationContext)
+```
+
+---
+
+### `getDefaultInstance(Context, String cleverTapID)`
+
+Returns the default shared instance with a custom CleverTap ID assigned to the user. Use this overload when you manage your own user identity and have enabled custom IDs in your configuration.
+
+<ParamField path="context" type="Context" required>
+  The Android application context.
+</ParamField>
+
+<ParamField path="cleverTapID" type="String" required>
+  A custom identifier for the user, used to associate this device with an existing profile.
+</ParamField>
+
+<ResponseField name="return" type="CleverTapAPI">
+  The default `CleverTapAPI` instance, or `null` if the credentials are missing.
+</ResponseField>
+
+---
+
+### `instanceWithConfig(Context, CleverTapInstanceConfig)`
+
+Creates or returns an additional SDK instance backed by a `CleverTapInstanceConfig` object. Use this for multi-account setups where you need to send data to more than one CleverTap account simultaneously.
+
+<ParamField path="context" type="Context" required>
+  The Android application context.
+</ParamField>
+
+<ParamField path="config" type="CleverTapInstanceConfig" required>
+  A fully configured `CleverTapInstanceConfig` instance. Must not be `null`. All configuration must be set before calling this method.
+</ParamField>
+
+<ResponseField name="return" type="CleverTapAPI">
+  A `CleverTapAPI` instance bound to the supplied configuration.
+</ResponseField>
+
+```java java
+CleverTapInstanceConfig config = CleverTapInstanceConfig.createInstance(
+    context, "ACCOUNT_ID", "ACCOUNT_TOKEN"
+);
+CleverTapAPI secondInstance = CleverTapAPI.instanceWithConfig(context, config);
+```
+
+```kotlin kotlin
+val config = CleverTapInstanceConfig.createInstance(
+    context, "ACCOUNT_ID", "ACCOUNT_TOKEN"
+)
+val secondInstance = CleverTapAPI.instanceWithConfig(context, config)
+```
+
+---
+
+## Analytics methods
+
+Use these methods to record events, track screens, and read session and event statistics.
+
+### `pushEvent(String eventName)`
+
+Pushes a basic event with no properties.
+
+<ParamField path="eventName" type="String" required>
+  The name of the event to record. Must not be `null` or blank.
+</ParamField>
+
+```java java
+cleverTap.pushEvent("Product Viewed");
+```
+
+```kotlin kotlin
+cleverTap.pushEvent("Product Viewed")
+```
+
+---
+
+### `pushEvent(String eventName, Map<String, Object> eventActions)`
+
+Pushes an event with a map of associated properties.
+
+<ParamField path="eventName" type="String" required>
+  The name of the event to record.
+</ParamField>
+
+<ParamField path="eventActions" type="Map<String, Object>" required>
+  A map of property keys to values. Values may be `String`, `Integer`, `Long`, `Boolean`, `Float`, `Double`, `Date`, or `Character`.
+</ParamField>
+
+```java java
+Map<String, Object> props = new HashMap<>();
+props.put("Product Name", "Cashmere Sweater");
+props.put("Category", "Apparel");
+props.put("Price", 49.99);
+cleverTap.pushEvent("Product Viewed", props);
+```
+
+```kotlin kotlin
+val props = mapOf(
+    "Product Name" to "Cashmere Sweater",
+    "Category" to "Apparel",
+    "Price" to 49.99
+)
+cleverTap.pushEvent("Product Viewed", props)
+```
+
+---
+
+### `pushChargedEvent(HashMap<String, Object> chargeDetails, ArrayList<HashMap<String, Object>> items)`
+
+Records a Charged event describing a purchase. This is a reserved CleverTap event that populates the Revenue dashboard.
+
+<ParamField path="chargeDetails" type="HashMap<String, Object>" required>
+  Top-level purchase details such as `Amount`, `Payment Mode`, and `Charged ID`. Values follow the same type rules as `pushEvent`.
+</ParamField>
+
+<ParamField path="items" type="ArrayList<HashMap<String, Object>>" required>
+  A list of up to 15 maps, each describing one purchased item (for example, `Product Name`, `Quantity`, `Price`).
+</ParamField>
+
+```java java
+HashMap<String, Object> chargeDetails = new HashMap<>();
+chargeDetails.put("Amount", 59.99);
+chargeDetails.put("Payment Mode", "Credit Card");
+chargeDetails.put("Charged ID", "order_123");
+
+HashMap<String, Object> item = new HashMap<>();
+item.put("Product Name", "Cashmere Sweater");
+item.put("Quantity", 1);
+item.put("Price", 59.99);
+
+ArrayList<HashMap<String, Object>> items = new ArrayList<>();
+items.add(item);
+
+cleverTap.pushChargedEvent(chargeDetails, items);
+```
+
+```kotlin kotlin
+val chargeDetails = hashMapOf<String, Any>(
+    "Amount" to 59.99,
+    "Payment Mode" to "Credit Card",
+    "Charged ID" to "order_123"
+)
+val item = hashMapOf<String, Any>(
+    "Product Name" to "Cashmere Sweater",
+    "Quantity" to 1,
+    "Price" to 59.99
+)
+cleverTap.pushChargedEvent(chargeDetails, arrayListOf(item))
+```
+
+---
+
+### `pushError(String errorMessage, int errorCode)`
+
+Records an "Error Occurred" event that is visible in the CleverTap dashboard under custom events.
+
+<ParamField path="errorMessage" type="String" required>
+  A human-readable description of the error.
+</ParamField>
+
+<ParamField path="errorCode" type="int" required>
+  A numeric code identifying the error category.
+</ParamField>
+
+---
+
+### `recordScreen(String screenName)`
+
+Records a Screen View event. Successive calls with the same name are deduplicated; the event is only sent when the screen name changes.
+
+<ParamField path="screenName" type="String" required>
+  The name of the screen the user has navigated to.
+</ParamField>
+
+```java java
+cleverTap.recordScreen("Home");
+```
+
+```kotlin kotlin
+cleverTap.recordScreen("Home")
+```
+
+---
+
+### `pushDeepLink(Uri uri)`
+
+Passes a deep link URI to CleverTap to track UTM attribution for installs and re-engagements.
+
+<ParamField path="uri" type="Uri" required>
+  The deep link `Uri` containing UTM parameters such as `utm_source`, `utm_medium`, and `utm_campaign`.
+</ParamField>
+
+---
+
+### `getCount(String event)`
+
+Returns the total number of times the specified event has been raised on this device.
+
+<ParamField path="event" type="String" required>
+  The name of the event to query.
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Total event count, or `-1` if the event has never been recorded.
+</ResponseField>
+
+<Note>
+  Deprecated since SDK v7.1.0. Use `getUserEventLogCount(String)` instead, which returns per-user counts tied to the current CleverTap ID.
+</Note>
+
+---
+
+### `getFirstTime(String event)`
+
+Returns the Unix timestamp (seconds) of the first time the specified event was raised.
+
+<ParamField path="event" type="String" required>
+  The name of the event to query.
+</ParamField>
+
+<ResponseField name="return" type="int">
+  First-occurrence timestamp, or `-1` if the event has never been recorded.
+</ResponseField>
+
+<Note>
+  Deprecated since SDK v7.1.0. Use `getUserEventLog(String)` for per-user first-occurrence data.
+</Note>
+
+---
+
+### `getLastTime(String event)`
+
+Returns the Unix timestamp (seconds) of the most recent time the specified event was raised.
+
+<ParamField path="event" type="String" required>
+  The name of the event to query.
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Last-occurrence timestamp, or `-1` if the event has never been recorded.
+</ResponseField>
+
+<Note>
+  Deprecated since SDK v7.1.0. Use `getUserEventLog(String)` for per-user last-occurrence data.
+</Note>
+
+---
+
+### `getPreviousVisitTime()`
+
+Returns the Unix timestamp of the user's previous app session.
+
+<ResponseField name="return" type="int">
+  Timestamp of the previous visit, in seconds.
+</ResponseField>
+
+<Note>
+  Deprecated since SDK v7.1.0. Use `getUserLastVisitTs()` for the current user's last visit timestamp.
+</Note>
+
+---
+
+### `getScreenCount()`
+
+Returns the number of distinct screens that have been displayed by the app in the current session.
+
+<ResponseField name="return" type="int">
+  Total screen view count.
+</ResponseField>
+
+---
+
+### `getTotalVisits()`
+
+Returns the total number of times the app has been launched (App Launched event count) on this device.
+
+<ResponseField name="return" type="int">
+  Total app launch count.
+</ResponseField>
+
+<Note>
+  Deprecated since SDK v7.1.0. Use `getUserAppLaunchCount()` for per-user launch counts.
+</Note>
+
+---
+
+### `getTimeElapsed()`
+
+Returns the number of seconds the user has spent in the app during the current session.
+
+<ResponseField name="return" type="int">
+  Elapsed time in seconds, or `-1` if no active session exists.
+</ResponseField>
+
+---
+
+## Profile methods
+
+Use these methods to create and update user profiles, switch users, and manage multi-value profile properties.
+
+### `pushProfile(Map<String, Object> profile)`
+
+Updates the current user's profile with the supplied key-value pairs. Existing keys are updated; new keys are added. Reserved keys such as `Name`, `Email`, `Phone`, `Identity`, and `DOB` are treated specially by the dashboard.
+
+<ParamField path="profile" type="Map<String, Object>" required>
+  A map of profile property names to values. Values may be `String`, `Integer`, `Long`, `Boolean`, `Float`, `Double`, `Date`, or `Character`.
+</ParamField>
+
+```java java
+Map<String, Object> profile = new HashMap<>();
+profile.put("Name", "Jane Doe");
+profile.put("Email", "jane@example.com");
+profile.put("Plan", "Premium");
+cleverTap.pushProfile(profile);
+```
+
+```kotlin kotlin
+cleverTap.pushProfile(mapOf(
+    "Name" to "Jane Doe",
+    "Email" to "jane@example.com",
+    "Plan" to "Premium"
+))
+```
+
+---
+
+### `onUserLogin(Map<String, Object> profile)`
+
+Creates a new identified user profile or switches to an existing one. Call this method when a user logs in. The first call on a fresh install associates the device's anonymous history with the newly identified user. Subsequent calls start a new session for the new identity and clear data from the previous user.
+
+<ParamField path="profile" type="Map<String, Object>" required>
+  A map containing at least one identity key: `Identity`, `Email`, `FBID`, or `GPID`. Additional profile properties may be included.
+</ParamField>
+
+```java java
+Map<String, Object> profile = new HashMap<>();
+profile.put("Identity", "user_42");
+profile.put("Email", "jane@example.com");
+cleverTap.onUserLogin(profile);
+```
+
+```kotlin kotlin
+cleverTap.onUserLogin(mapOf(
+    "Identity" to "user_42",
+    "Email" to "jane@example.com"
+))
+```
+
+---
+
+### `onUserLogin(Map<String, Object> profile, String cleverTapID)`
+
+Identical to `onUserLogin(Map)` but also assigns a custom CleverTap ID to the user. Only valid when `enableCustomCleverTapId` has been set to `true` in `CleverTapInstanceConfig`.
+
+<ParamField path="profile" type="Map<String, Object>" required>
+  Profile map with at least one identity key.
+</ParamField>
+
+<ParamField path="cleverTapID" type="String" required>
+  A custom identifier managed by your application.
+</ParamField>
+
+---
+
+### `addMultiValueForKey(String key, String value)`
+
+Adds a single unique value to a multi-value profile property. If the property does not exist it is created. If the property currently holds a scalar value it is promoted to a multi-value list. The list is capped at 100 entries; the oldest entry is dropped when the cap is exceeded.
+
+<ParamField path="key" type="String" required>
+  The name of the multi-value profile property.
+</ParamField>
+
+<ParamField path="value" type="String" required>
+  The value to add. Limited to 512 characters.
+</ParamField>
+
+---
+
+### `addMultiValuesForKey(String key, ArrayList<String> values)`
+
+Adds a collection of unique values to a multi-value profile property in a single call.
+
+<ParamField path="key" type="String" required>
+  The name of the multi-value profile property.
+</ParamField>
+
+<ParamField path="values" type="ArrayList<String>" required>
+  The values to add. Each value is limited to 512 characters. The total list is capped at 100 entries.
+</ParamField>
+
+---
+
+### `removeMultiValueForKey(String key, String value)`
+
+Removes a single value from a multi-value profile property. If the resulting list is empty, the property key is removed from the profile.
+
+<ParamField path="key" type="String" required>
+  The name of the multi-value profile property.
+</ParamField>
+
+<ParamField path="value" type="String" required>
+  The value to remove.
+</ParamField>
+
+---
+
+### `removeMultiValuesForKey(String key, ArrayList<String> values)`
+
+Removes a collection of values from a multi-value profile property.
+
+<ParamField path="key" type="String" required>
+  The name of the multi-value profile property.
+</ParamField>
+
+<ParamField path="values" type="ArrayList<String>" required>
+  The values to remove.
+</ParamField>
+
+---
+
+### `setMultiValuesForKey(String key, ArrayList<String> values)`
+
+Replaces any existing values for a multi-value profile property with the supplied list. Any prior values are overwritten.
+
+<ParamField path="key" type="String" required>
+  The name of the multi-value profile property.
+</ParamField>
+
+<ParamField path="values" type="ArrayList<String>" required>
+  The new complete set of values. Limited to 100 entries; each value limited to 512 characters.
+</ParamField>
+
+---
+
+### `removeValueForKey(String key)`
+
+Removes a profile property entirely. This also purges PII fields such as `Email`, `Name`, and `Phone` from local storage and shared preferences.
+
+<ParamField path="key" type="String" required>
+  The profile property key to remove.
+</ParamField>
+
+---
+
+### `incrementValue(String key, Number value)`
+
+Increments a numeric profile property by the given positive amount. If the property does not exist it is created starting from the increment value.
+
+<ParamField path="key" type="String" required>
+  The name of the numeric profile property.
+</ParamField>
+
+<ParamField path="value" type="Number" required>
+  The positive amount by which to increment the property.
+</ParamField>
+
+---
+
+### `decrementValue(String key, Number value)`
+
+Decrements a numeric profile property by the given positive amount.
+
+<ParamField path="key" type="String" required>
+  The name of the numeric profile property.
+</ParamField>
+
+<ParamField path="value" type="Number" required>
+  The positive amount by which to decrement the property.
+</ParamField>
+
+---
+
+### `setOptOut(boolean userOptOut)`
+
+Opts the current user in or out of all event and profile tracking. When opted out, no events are saved locally or sent to the server. You must call this method separately for each user when switching profiles with `onUserLogin`.
+
+<ParamField path="userOptOut" type="boolean" required>
+  Pass `true` to opt out the current user, `false` to re-enable tracking.
+</ParamField>
+
+---
+
+### `setOffline(boolean value)`
+
+Sets the SDK instance to offline mode. While offline, events are queued locally but not transmitted. Setting the value back to `false` immediately flushes the queue.
+
+<ParamField path="value" type="boolean" required>
+  Pass `true` to go offline, `false` to resume sending.
+</ParamField>
+
+---
+
+## Configuration and utility methods
+
+### `setDebugLevel(int level)` _(static)_
+
+Enables or disables SDK debug output in Android logcat. Log entries are tagged `CleverTap`.
+
+<ParamField path="level" type="int" required>
+  One of: `-1` (off), `0` (info, default), `2` (debug), `3` (verbose). Alternatively, pass a `CleverTapAPI.LogLevel` enum value using the overloaded form.
+</ParamField>
+
+```java java
+CleverTapAPI.setDebugLevel(CleverTapAPI.LogLevel.DEBUG);
+```
+
+```kotlin kotlin
+CleverTapAPI.setDebugLevel(CleverTapAPI.LogLevel.DEBUG)
+```
+
+---
+
+### `getDebugLevel()` _(static)_
+
+Returns the currently configured log level as an `int`.
+
+<ResponseField name="return" type="int">
+  The active log level integer value.
+</ResponseField>
+
+---
+
+### `getCleverTapID()`
+
+Returns the unique identifier CleverTap uses to identify this user on the current device. This method may block while the ID is being generated; call it from a background thread.
+
+<ResponseField name="return" type="String">
+  The CleverTap device/user identifier.
+</ResponseField>
+
+<Note>
+  For asynchronous retrieval without blocking the main thread, use `getCleverTapID(OnInitCleverTapIDListener)` instead.
+</Note>
+
+---
+
+### `getAccountId()`
+
+Returns the CleverTap account ID associated with this SDK instance.
+
+<ResponseField name="return" type="String">
+  The account ID string.
+</ResponseField>
+
+---
+
+### `setLocale(String locale)`
+
+Sets a custom locale for this CleverTap instance, overriding the system locale for SDK-level locale-aware operations.
+
+<ParamField path="locale" type="String" required>
+  A non-empty locale string (for example, `"en_US"`). Empty or null values are ignored.
+</ParamField>
+
+---
+
+### `enableDeviceNetworkInfoReporting(boolean value)`
+
+Enables or disables collection of device network information including the IP address. This reporting is disabled by default.
+
+<ParamField path="value" type="boolean" required>
+  Pass `true` to enable network info reporting, `false` to disable it.
+</ParamField>
+
+---
+
+## In-app notification methods
+
+The methods below control the display lifecycle of in-app notifications. For the complete in-app API including listeners and push primer flows, see the In-App Notifications reference.
+
+### `suspendInAppNotifications()`
+
+Pauses in-app notification display. Notifications that would have been shown are queued and will be displayed once `resumeInAppNotifications()` is called.
+
+---
+
+### `resumeInAppNotifications()`
+
+Resumes in-app notification display. If `suspendInAppNotifications()` was previously called, all queued notifications are shown immediately. If `discardInAppNotifications()` was called instead, only new notifications raised after this call will be displayed.
+
+---
+
+### `discardInAppNotifications()`
+
+Suspends in-app notifications and discards any that would have been displayed. Notifications triggered after calling `discardInAppNotifications()` are dropped until `resumeInAppNotifications()` is called.
+
+---
+
+### `fetchInApps(FetchInAppsCallback callback)`
+
+Triggers a server fetch of in-app notification definitions for the current user.
+
+<ParamField path="callback" type="FetchInAppsCallback" required>
+  A callback invoked when the fetch completes. Pass `null` to trigger the fetch without a callback.
+</ParamField>
+
+---
+
+## Variables methods
+
+CleverTap Variables allow you to remotely configure values in your app without a code release. For the complete Variables API including annotations and file variables, see the Variables reference.
+
+### `defineVariable(String name, T defaultValue)`
+
+Defines a new remotely-configurable variable with a default value. The type `T` is inferred from `defaultValue` and may be `String`, `Integer`, `Long`, `Float`, `Double`, `Boolean`, or `Map`.
+
+<ParamField path="name" type="String" required>
+  A unique name for the variable, which maps to the corresponding variable in the CleverTap dashboard.
+</ParamField>
+
+<ParamField path="defaultValue" type="T" required>
+  The value used before the server-side value is fetched. Must not be `null` — use the `@Variable` annotation approach if the type cannot be inferred.
+</ParamField>
+
+<ResponseField name="return" type="Var<T>">
+  A `Var` instance representing the variable.
+</ResponseField>
+
+```java java
+Var<String> welcomeText = cleverTap.defineVariable("welcome_text", "Hello!");
+Var<Integer> maxItems   = cleverTap.defineVariable("max_items", 5);
+```
+
+```kotlin kotlin
+val welcomeText = cleverTap.defineVariable("welcome_text", "Hello!")
+val maxItems    = cleverTap.defineVariable("max_items", 5)
+```
+
+---
+
+### `fetchVariables(FetchVariablesCallback callback)`
+
+Requests the latest variable values from the CleverTap server. The SDK keeps only one registered callback at a time; calling this method again replaces any previously set callback.
+
+<ParamField path="callback" type="FetchVariablesCallback" required>
+  Invoked when the fetch completes. Pass `null` to fetch without a callback.
+</ParamField>
+
+---
+
+### `syncVariables()`
+
+Uploads the definitions of all currently defined variables to the CleverTap server so they appear in the dashboard for configuration.
+
+<Warning>
+  `syncVariables()` only works when the app is running in **development mode** (debuggable build) and the logged-in user is marked as a **Test Profile** in the CleverTap dashboard. Calling it in a release build has no effect.
+</Warning>

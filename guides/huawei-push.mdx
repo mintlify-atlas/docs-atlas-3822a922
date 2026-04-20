@@ -1,0 +1,127 @@
+---
+title: "Huawei push notifications with CleverTap HMS"
+description: "Integrate the CleverTap HMS SDK to deliver push notifications via Huawei Mobile Services on non-GMS Android devices that cannot use Firebase Cloud Messaging."
+---
+
+Many Android devices sold in markets such as China ship without Google Mobile Services (GMS) and therefore cannot receive notifications through Firebase Cloud Messaging (FCM). Huawei Mobile Services (HMS) provides an alternative push delivery channel for these devices. The `clevertap-hms-sdk` extension wraps Huawei Push Kit and plugs it into the standard CleverTap push pipeline, so you can reach GMS and non-GMS users through a single CleverTap account.
+
+<Note>
+HMS and GMS push channels are independent. Devices that have GMS available will continue to use FCM. The HMS SDK only activates on devices where GMS is absent or unavailable.
+</Note>
+
+## Prerequisites
+
+- A Huawei developer account registered at the [Huawei Developer Console](https://developer.huawei.com)
+- An app created in AppGallery Connect with Push Kit enabled
+- CleverTap Android core SDK already integrated in your project
+
+## Set up AppGallery Connect
+
+<Steps>
+  <Step title="Register as a Huawei developer">
+    Create or sign in to your account at the Huawei Developer Console. You need a verified developer account before you can create apps or enable services.
+  </Step>
+
+  <Step title="Enable Push Kit">
+    In the AppGallery Connect console, open your app and navigate to **Manage APIs**. Locate **Push Kit** and toggle it on.
+  </Step>
+
+  <Step title="Download agconnect-services.json">
+    Still in AppGallery Connect, go to **Project settings** and download the `agconnect-services.json` configuration file. Place this file in the `app/` directory of your Android Studio project (the same folder that contains your app-level `build.gradle`).
+  </Step>
+</Steps>
+
+## Add dependencies
+
+### Project-level build.gradle
+
+Add the Huawei Maven repository and the AppGallery Connect Gradle plugin to your project-level `build.gradle`:
+
+```groovy
+buildscript {
+    repositories {
+        maven { url 'https://developer.huawei.com/repo/' }
+    }
+    dependencies {
+        classpath "com.huawei.agconnect:agcp:1.9.1.301"
+    }
+}
+
+allprojects {
+    repositories {
+        maven { url 'https://developer.huawei.com/repo/' }
+    }
+}
+```
+
+### App-level build.gradle
+
+Add the CleverTap HMS SDK and Huawei Push Kit as implementation dependencies, then apply the AppGallery Connect plugin at the bottom of the file:
+
+```groovy
+dependencies {
+    implementation "com.clevertap.android:clevertap-hms-sdk:1.5.1"
+    implementation "com.huawei.hms:push:6.11.0.300"
+}
+
+// Add at the bottom of the file
+apply plugin: 'com.huawei.agconnect'
+```
+
+## Update AndroidManifest.xml
+
+Declare the CleverTap HMS push provider so the core SDK can discover the HMS channel at runtime:
+
+```xml
+<meta-data
+    android:name="CLEVERTAP_PROVIDER_1"
+    android:value="@string/hps_manifest_entry" />
+```
+
+<Note>
+If you initialise CleverTap with `CleverTapAPI.instanceWithConfig`, ensure this call happens in your `Application` class before any `Activity` is created. The HMS push provider registration depends on the CleverTap instance being available at startup.
+</Note>
+
+## Custom HMS message service (optional)
+
+The `clevertap-hms-sdk` ships a built-in `CTHmsMessageService` that handles both incoming messages and new token callbacks automatically. If you have an existing custom `HmsMessageService`, forward the HMS push token to CleverTap inside `onNewToken`:
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    override fun onNewToken(token: String?, bundle: Bundle?) {
+        super.onNewToken(token, bundle)
+        if (token != null) {
+            cleverTapAPIInstance.pushRegistrationToken(token, HmsConstants.HPS, true)
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    @Override
+    public void onNewToken(String token) {
+        super.onNewToken(token);
+        if (token != null) {
+            cleverTapAPIInstance.pushRegistrationToken(token, HmsConstants.HPS, true);
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+If you also render notifications yourself and want to support Pull Notifications (Push Amp), pass the incoming `RemoteMessage` to CleverTap before rendering:
+
+```java
+CleverTapAPI.processPushNotification(getApplicationContext(), extras);
+```
+
+## Test on a Huawei device
+
+1. Install your app on a Huawei device that does not have GMS (for example, a device running EMUI with HMS Core but no Play Services).
+2. Launch the app and verify that an HMS push token appears in Logcat under the `HPS` tag.
+3. Send a test push notification from the CleverTap dashboard and confirm delivery on the device.
+
+<Note>
+Testing HMS push requires a physical Huawei device or an emulator with HMS Core installed. Standard Android emulators in Android Studio do not include HMS Core.
+</Note>

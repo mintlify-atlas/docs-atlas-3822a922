@@ -1,0 +1,410 @@
+---
+title: "Listeners and callbacks reference for CleverTap"
+description: "Reference for all listener and callback interfaces in the CleverTap Android SDK, their method signatures, and the CleverTapAPI method to register each."
+---
+
+The CleverTap Android SDK uses listener and callback interfaces to deliver asynchronous events — such as profile initialization, in-app notification lifecycle events, inbox updates, and variable changes — to your application code. Each interface is registered on a `CleverTapAPI` instance using a dedicated setter method. Unless noted otherwise, all callbacks are delivered on the main thread.
+
+---
+
+## SyncListener
+
+<Warning>
+  `SyncListener` has been deprecated since SDK v4.2.0 and will be removed in a future version. Use `CleverTapAPI#getCleverTapID(OnInitCleverTapIDListener)` instead to obtain the CleverTap device ID.
+</Warning>
+
+**Register with:** `CleverTapAPI#setSyncListener(SyncListener)`
+
+| Method | Description |
+|---|---|
+| `profileDataUpdated(JSONObject updates)` | Called when the user profile data is updated. `updates` contains the changed fields. |
+| `profileDidInitialize(String CleverTapID)` | Called when the CleverTap device ID has been generated. `CleverTapID` may be a custom ID, Google Ad ID, or SDK-generated ID. Callback is received on the main thread — avoid long-running work here. |
+
+<CodeGroup>
+```java Java
+cleverTap.setSyncListener(new SyncListener() {
+    @Override
+    public void profileDataUpdated(JSONObject updates) {
+        // Profile fields have changed
+    }
+
+    @Override
+    public void profileDidInitialize(String CleverTapID) {
+        // Device ID is available
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.setSyncListener(object : SyncListener {
+    override fun profileDataUpdated(updates: JSONObject) {
+        // Profile fields have changed
+    }
+
+    override fun profileDidInitialize(CleverTapID: String) {
+        // Device ID is available
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## InAppNotificationListener
+
+Provides lifecycle callbacks for in-app notifications. Register before any in-app is shown so that `beforeShow` can suppress or allow each notification.
+
+**Register with:** `CleverTapAPI#setInAppNotificationListener(InAppNotificationListener)`
+
+### `beforeShow(Map<String, Object> extras)`
+
+Called just before an in-app notification is rendered. Return `true` to allow the notification to display, or `false` to suppress it.
+
+<ParamField path="extras" type="Map<String, Object>" required>
+  The key-value pairs configured for this notification in the CleverTap dashboard.
+</ParamField>
+
+**Returns:** `boolean` — `true` to show the notification, `false` to suppress it.
+
+### `onShow(CTInAppNotification ctInAppNotification)`
+
+Called after an in-app notification has been rendered on screen.
+
+<ParamField path="ctInAppNotification" type="CTInAppNotification" required>
+  The notification object that was displayed.
+</ParamField>
+
+### `onDismissed(Map<String, Object> extras, @Nullable Map<String, Object> actionExtras)`
+
+Called when an in-app notification is dismissed — either by the close button or a call-to-action.
+
+<ParamField path="extras" type="Map<String, Object>" required>
+  The notification's dashboard-configured key-value pairs.
+</ParamField>
+
+<ParamField path="actionExtras" type="Map<String, Object>">
+  Properties from the action that triggered the dismissal (for example, widget values). May be `null` if the notification was closed without an action.
+</ParamField>
+
+<CodeGroup>
+```java Java
+cleverTap.setInAppNotificationListener(new InAppNotificationListener() {
+    @Override
+    public boolean beforeShow(Map<String, Object> extras) {
+        return true; // allow all in-apps
+    }
+
+    @Override
+    public void onShow(CTInAppNotification ctInAppNotification) {
+        // In-app is now visible
+    }
+
+    @Override
+    public void onDismissed(Map<String, Object> extras,
+                            @Nullable Map<String, Object> actionExtras) {
+        // In-app was dismissed
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.setInAppNotificationListener(object : InAppNotificationListener {
+    override fun beforeShow(extras: Map<String, Any>): Boolean {
+        return true // allow all in-apps
+    }
+
+    override fun onShow(ctInAppNotification: CTInAppNotification) {
+        // In-app is now visible
+    }
+
+    override fun onDismissed(extras: Map<String, Any>,
+                             actionExtras: Map<String, Any>?) {
+        // In-app was dismissed
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## InAppNotificationButtonListener
+
+Receives a callback when the user taps a button in an in-app notification that has custom key-value pairs attached to it.
+
+**Register with:** `CleverTapAPI#setInAppNotificationButtonListener(InAppNotificationButtonListener)`
+
+### `onInAppButtonClick(HashMap<String, String> payload)`
+
+Called when an in-app button is clicked. `payload` contains the custom key-value pairs configured on the button in the CleverTap dashboard.
+
+<ParamField path="payload" type="HashMap<String, String>" required>
+  Key-value pairs associated with the clicked in-app widget button.
+</ParamField>
+
+<CodeGroup>
+```java Java
+cleverTap.setInAppNotificationButtonListener(new InAppNotificationButtonListener() {
+    @Override
+    public void onInAppButtonClick(HashMap<String, String> payload) {
+        // Handle button click payload
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.setInAppNotificationButtonListener(object : InAppNotificationButtonListener {
+    override fun onInAppButtonClick(payload: HashMap<String, String>) {
+        // Handle button click payload
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## CTInboxListener
+
+Receives callbacks for App Inbox initialization and message updates.
+
+**Register with:** `CleverTapAPI#setCTNotificationInboxListener(CTInboxListener)`
+
+### `inboxDidInitialize()`
+
+Called when the App Inbox controller has finished initializing and messages are ready to display.
+
+### `inboxMessagesDidUpdate()`
+
+Called when inbox messages are updated, deleted, or marked as read.
+
+<CodeGroup>
+```java Java
+cleverTap.setCTNotificationInboxListener(new CTInboxListener() {
+    @Override
+    public void inboxDidInitialize() {
+        // Inbox is ready; safe to call inbox display APIs
+    }
+
+    @Override
+    public void inboxMessagesDidUpdate() {
+        // Inbox messages have changed; refresh your UI
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.setCTNotificationInboxListener(object : CTInboxListener {
+    override fun inboxDidInitialize() {
+        // Inbox is ready; safe to call inbox display APIs
+    }
+
+    override fun inboxMessagesDidUpdate() {
+        // Inbox messages have changed; refresh your UI
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## InboxMessageButtonListener
+
+Receives a callback when the user taps an inbox message button that has custom key-value pairs.
+
+**Register with:** `CleverTapAPI#setInboxMessageButtonListener(InboxMessageButtonListener)`
+
+### `onInboxButtonClick(HashMap<String, String> payload)`
+
+Called when an inbox message button is clicked. `payload` contains the custom key-value pairs configured on the button.
+
+<ParamField path="payload" type="HashMap<String, String>" required>
+  Key-value pairs from the clicked inbox message button.
+</ParamField>
+
+<CodeGroup>
+```java Java
+cleverTap.setInboxMessageButtonListener(new InboxMessageButtonListener() {
+    @Override
+    public void onInboxButtonClick(HashMap<String, String> payload) {
+        // Handle inbox button click payload
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.setInboxMessageButtonListener(object : InboxMessageButtonListener {
+    override fun onInboxButtonClick(payload: HashMap<String, String>) {
+        // Handle inbox button click payload
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## InboxMessageListener
+
+Receives callbacks for inbox item clicks and CTA interactions that do not carry custom key-value pairs (for example, deep-link or clipboard CTAs).
+
+**Register with:** `CleverTapAPI#setCTInboxMessageListener(InboxMessageListener)`
+
+### `onInboxItemClicked(CTInboxMessage message, int contentPageIndex, int buttonIndex)`
+
+Called when the user clicks an inbox item or a CTA button.
+
+<ParamField path="message" type="CTInboxMessage" required>
+  The `CTInboxMessage` object that was interacted with.
+</ParamField>
+
+<ParamField path="contentPageIndex" type="int" required>
+  The page index of the clicked content. For carousel templates this indicates the carousel page; for non-carousel templates it is always `0`.
+</ParamField>
+
+<ParamField path="buttonIndex" type="int" required>
+  The index of the CTA button that was clicked (`0`, `1`, or `2`). A value of `-1` indicates the inbox item itself was clicked rather than a specific button.
+</ParamField>
+
+<CodeGroup>
+```java Java
+cleverTap.setCTInboxMessageListener(new InboxMessageListener() {
+    @Override
+    public void onInboxItemClicked(CTInboxMessage message,
+                                   int contentPageIndex,
+                                   int buttonIndex) {
+        if (buttonIndex == -1) {
+            // Inbox item body was clicked
+        } else {
+            // CTA button at buttonIndex was clicked
+        }
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.setCTInboxMessageListener(object : InboxMessageListener {
+    override fun onInboxItemClicked(
+        message: CTInboxMessage,
+        contentPageIndex: Int,
+        buttonIndex: Int
+    ) {
+        if (buttonIndex == -1) {
+            // Inbox item body was clicked
+        } else {
+            // CTA button at buttonIndex was clicked
+        }
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## CTFeatureFlagsListener
+
+<Warning>
+  `CTFeatureFlagsListener` has been deprecated since SDK v5.0.0 and will be removed in a future version.
+</Warning>
+
+**Register with:** `CleverTapAPI#setCTFeatureFlagsListener(CTFeatureFlagsListener)`
+
+### `featureFlagsUpdated()`
+
+Called whenever feature flag values are updated from the server.
+
+<CodeGroup>
+```java Java
+cleverTap.setCTFeatureFlagsListener(new CTFeatureFlagsListener() {
+    @Override
+    public void featureFlagsUpdated() {
+        // Feature flag values have been refreshed
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.setCTFeatureFlagsListener(object : CTFeatureFlagsListener {
+    override fun featureFlagsUpdated() {
+        // Feature flag values have been refreshed
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## VariablesChangedCallback
+
+A callback invoked when remote variable values change. Register with the methods below on `CleverTapAPI`. See the [Remote Variables API reference](/api/variables-api) for the complete list of registration methods.
+
+**Register with (repeating):** `CleverTapAPI#addVariablesChangedCallback(VariablesChangedCallback)`
+
+**Register with (one-time):** `CleverTapAPI#addOneTimeVariablesChangedCallback(VariablesChangedCallback)`
+
+### `variablesChanged()`
+
+Called on every app start and each time new variable values are fetched from the server (repeating variant), or once on the first fetch (one-time variant).
+
+<CodeGroup>
+```java Java
+cleverTap.addVariablesChangedCallback(new VariablesChangedCallback() {
+    @Override
+    public void variablesChanged() {
+        // Variables have been initialized or updated
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.addVariablesChangedCallback(object : VariablesChangedCallback() {
+    override fun variablesChanged() {
+        // Variables have been initialized or updated
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## FetchVariablesCallback
+
+A one-shot callback that reports the outcome of a `fetchVariables()` network request.
+
+**Register with:** `CleverTapAPI#fetchVariables(FetchVariablesCallback)`
+
+### `onVariablesFetched(boolean isSuccess)`
+
+Called after the fetch request completes. `isSuccess` is `true` when the server responded successfully, and `false` on network errors or server failures. The callback fires regardless of whether variable values changed.
+
+<ParamField path="isSuccess" type="boolean" required>
+  `true` if the server request succeeded; `false` otherwise.
+</ParamField>
+
+<Note>
+  Only one `FetchVariablesCallback` is active at a time. Calling `fetchVariables(callback)` again replaces the previous callback.
+</Note>
+
+<CodeGroup>
+```java Java
+cleverTap.fetchVariables(new FetchVariablesCallback() {
+    @Override
+    public void onVariablesFetched(boolean isSuccess) {
+        if (isSuccess) {
+            // Variables are up to date
+        }
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.fetchVariables { isSuccess ->
+    if (isSuccess) {
+        // Variables are up to date
+    }
+}
+```
+</CodeGroup>
+
+---
+
+## GeofenceCallback (internal bridge)
+
+`GeofenceCallback` is an internal interface used by the CleverTap Geofence SDK to communicate with the CleverTap core SDK. Application code should not implement this interface directly.
+
+**Register with:** `CleverTapAPI#setGeofenceCallback(GeofenceCallback)`
+
+| Method | Description |
+|---|---|
+| `handleGeoFences(JSONObject jsonObject)` | Delivers geofence configuration data from the core SDK to the Geofence SDK. |
+| `triggerLocation()` | Requests an immediate location fetch from the Geofence SDK. |
+
+For geofence events visible to application code, see the [Geofence API reference](/api/geofence-api) and the `CTGeofenceEventsListener` and `CTLocationUpdatesListener` interfaces documented there.

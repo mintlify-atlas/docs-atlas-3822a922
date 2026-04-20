@@ -1,0 +1,125 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "CleverTap Android SDK",
+  "projectDescription": "A mobile customer engagement and analytics SDK for Android that provides event tracking, user profiling, push notifications, in-app messaging, and real-time segmentation.",
+  "theme": "palm",
+  "primaryColor": "#6c3c84",
+  "lightColor": "#b49cc2",
+  "darkColor": "#ddd4e4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "initialization"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "guides/event-tracking",
+              "guides/user-profiles",
+              "guides/push-notifications",
+              "guides/in-app-notifications",
+              "guides/app-inbox"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "guides/variables",
+              "guides/custom-templates",
+              "guides/geofence",
+              "guides/push-templates",
+              "guides/proxy-domain"
+            ]
+          },
+          {
+            "group": "Extensions",
+            "pages": [
+              "guides/huawei-push",
+              "guides/rendermax"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/clevertap-api",
+              "api/clevertap-instance-config",
+              "api/activity-lifecycle-callback"
+            ]
+          },
+          {
+            "group": "Notifications & Messaging",
+            "pages": [
+              "api/push-notification-api",
+              "api/in-app-notification-api",
+              "api/inbox-api"
+            ]
+          },
+          {
+            "group": "Feature APIs",
+            "pages": [
+              "api/variables-api",
+              "api/geofence-api",
+              "api/display-units-api"
+            ]
+          },
+          {
+            "group": "Callbacks & Listeners",
+            "pages": [
+              "api/listeners",
+              "api/changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Event and user profile tracking (pushEvent, pushChargedEvent, pushProfile)",
+    "Push notifications with FCM, HMS (Huawei), and Xiaomi support",
+    "In-app notifications with customizable templates and push primer support",
+    "App Inbox for persistent in-app messaging",
+    "Remote Variables (A/B testing and feature flags)",
+    "Custom Code Templates for fully custom in-app experiences",
+    "Geofencing with location-triggered campaigns",
+    "Rich push notification templates (carousel, rating, timer, etc.)",
+    "RenderMax SDK for improved push delivery on battery-optimized devices",
+    "Multi-instance SDK support for sending data to multiple CleverTap accounts"
+  ],
+  "publicApiSurface": [
+    "CleverTapAPI.getDefaultInstance(Context)",
+    "CleverTapAPI.instanceWithConfig(Context, CleverTapInstanceConfig)",
+    "CleverTapAPI.pushEvent(String, Map)",
+    "CleverTapAPI.pushChargedEvent(HashMap, ArrayList)",
+    "CleverTapAPI.pushProfile(Map)",
+    "CleverTapAPI.onUserLogin(Map)",
+    "CleverTapAPI.showAppInbox(CTInboxStyleConfig)",
+    "CleverTapAPI.defineVariable(String, T)",
+    "CleverTapAPI.fetchVariables(FetchVariablesCallback)",
+    "CleverTapAPI.syncVariables()",
+    "CleverTapAPI.promptPushPrimer(JSONObject)",
+    "CleverTapAPI.promptForPushPermission(boolean)",
+    "CleverTapAPI.createNotificationChannel(Context, String, String, String, int, boolean)",
+    "CleverTapAPI.registerCustomInAppTemplates(TemplatesProducer)",
+    "CleverTapAPI.suspendInAppNotifications()",
+    "CleverTapAPI.resumeInAppNotifications()",
+    "CleverTapAPI.recordScreen(String)",
+    "CleverTapAPI.setOffline(boolean)",
+    "CleverTapAPI.setOptOut(boolean)",
+    "CTGeofenceAPI.getInstance(Context).init(CTGeofenceSettings, CleverTapAPI)",
+    "CleverTapInstanceConfig.createInstance(Context, String, String)",
+    "ActivityLifecycleCallback.register(Application)"
+  ]
+}

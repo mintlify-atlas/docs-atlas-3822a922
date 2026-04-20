@@ -1,97 +1,44 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "CleverTap Android SDK documentation"
+description: "CleverTap Android SDK integrates analytics, push notifications, in-app messaging, App Inbox, remote variables, and geofencing into your Android app."
 ---
 
-## Setting up
+The CleverTap Android SDK gives your app a complete mobile customer engagement platform. Track user behavior, send targeted push notifications, display in-app messages, run A/B tests with remote variables, and trigger location-based campaigns — all through a single SDK.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install the SDK and send your first event in minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Initialization" icon="gear" href="/initialization">
+    Configure multiple instances, debug levels, and proxy domains
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Event tracking" icon="chart-line" href="/guides/event-tracking">
+    Record user actions, purchases, and screen views
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Push notifications" icon="bell" href="/guides/push-notifications">
+    Set up FCM push with channels, templates, and Android 13 permission
   </Card>
-</Columns>
+  <Card title="In-app notifications" icon="message" href="/guides/in-app-notifications">
+    Display banners, interstitials, and HTML overlays
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/clevertap-api">
+    Full CleverTapAPI class reference
+  </Card>
+</CardGroup>
 
-## Create beautiful pages
+## SDK modules
 
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="clevertap-android-sdk" icon="cube" href="/quickstart">
+    Core SDK: analytics, push, in-app, inbox, variables
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="clevertap-geofence" icon="location-dot" href="/guides/geofence">
+    Location-triggered campaigns via geofencing
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="push-templates" icon="images" href="/guides/push-templates">
+    Carousel, timer, rating, and other rich push templates
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="clevertap-hms" icon="mobile" href="/guides/huawei-push">
+    Huawei Mobile Services push for non-GMS devices
   </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+</CardGroup>

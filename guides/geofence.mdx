@@ -1,0 +1,196 @@
+---
+title: "Location-based geofencing with CleverTap"
+description: "Integrate the CleverTap Geofence SDK, configure location settings and accuracy modes, and handle enter/exit callbacks for geofence triggers."
+---
+
+The CleverTap Android Geofence SDK adds geofencing capabilities to the core CleverTap SDK using the Google Play Services Location library. When a user enters or exits a monitored geofence cluster, the SDK automatically raises a "Geofence Cluster Entered" or "Geofence Cluster Exited" event on the user's CleverTap profile. These events can then drive campaigns, personalization, or any other CleverTap workflow. Before integrating, make sure your project is already configured for the CleverTap Android SDK and Google Play Services.
+
+## Installation
+
+<Steps>
+  <Step title="Add dependencies">
+    Add the following to your module-level `build.gradle`:
+
+    ```groovy
+    implementation "com.clevertap.android:clevertap-geofence-sdk:1.4.0"
+    implementation "com.clevertap.android:clevertap-android-sdk:8.1.0" // 3.9.0 and above
+    implementation "com.google.android.gms:play-services-location:21.3.0"
+    implementation "androidx.work:work-runtime:2.10.2"                 // required for FETCH_LAST_LOCATION_PERIODIC
+    implementation "androidx.concurrent:concurrent-futures:1.2.0"      // required for FETCH_LAST_LOCATION_PERIODIC
+    ```
+  </Step>
+
+  <Step title="Declare permissions">
+    The SDK adds the following permissions to your merged manifest automatically. You still need to request them at runtime before initializing the geofence SDK:
+
+    ```xml
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    ```
+
+    At runtime, request the following:
+
+    ```
+    android.permission.ACCESS_FINE_LOCATION
+    android.permission.ACCESS_BACKGROUND_LOCATION  (required on Android 10 / API 29 and above for background access)
+    ```
+
+    <Warning>
+    On Android 12 (API 32) and above, you must request `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` together in a single runtime request. Background location (`ACCESS_BACKGROUND_LOCATION`) must be requested separately, after the user has already granted foreground location. Review Google's [background location policy](https://developer.android.com/training/location/permissions) before submitting to the Play Store.
+    </Warning>
+  </Step>
+
+  <Step title="Build CTGeofenceSettings">
+    Construct a `CTGeofenceSettings` object using the builder:
+
+    ```java
+    CTGeofenceSettings ctGeofenceSettings = new CTGeofenceSettings.Builder()
+        .enableBackgroundLocationUpdates(bgLocation)
+        .setLogLevel(logLevel)
+        .setLocationAccuracy(accuracy)
+        .setLocationFetchMode(fetchMode)
+        .setGeofenceMonitoringCount(geofenceCount)
+        .setInterval(interval)
+        .setFastestInterval(fastestInterval)
+        .setSmallestDisplacement(displacement)
+        .setGeofenceNotificationResponsiveness(geofenceNotificationResponsiveness)
+        .build();
+    ```
+  </Step>
+
+  <Step title="Initialize CTGeofenceAPI">
+    Initialize the geofence SDK after you have created your `CleverTapAPI` instance and obtained the required permissions:
+
+    ```java
+    CTGeofenceAPI.getInstance(getApplicationContext()).init(ctGeofenceSettings, cleverTapAPI);
+    ```
+
+    `CTGeofenceAPI` is activated automatically once `init()` is called.
+  </Step>
+</Steps>
+
+## CTGeofenceSettings builder options
+
+| Parameter | Default | Description |
+|---|---|---|
+| `enableBackgroundLocationUpdates(boolean)` | `true` | When `true`, the SDK registers background location updates. When `false`, location is fetched only in the foreground or via `triggerLocation()`. |
+| `setLogLevel(int)` | `DEBUG` | Controls SDK log verbosity. Options: `Logger.OFF`, `Logger.INFO`, `Logger.DEBUG`, `Logger.VERBOSE`. |
+| `setLocationAccuracy(byte)` | `ACCURACY_HIGH` | Applies only to `FETCH_CURRENT_LOCATION_PERIODIC`. See accuracy options below. |
+| `setLocationFetchMode(byte)` | `FETCH_LAST_LOCATION_PERIODIC` | Determines how the SDK obtains location. See fetch mode options below. |
+| `setInterval(long)` | 30 minutes | Interval in milliseconds between location fetches. Values below 30 minutes are ignored. |
+| `setFastestInterval(long)` | 30 minutes | Fastest interval in milliseconds. Applies only to `FETCH_CURRENT_LOCATION_PERIODIC`. Values below 30 minutes are ignored. |
+| `setSmallestDisplacement(float)` | 200 meters | Minimum displacement in meters before a new location is reported. Applies only to `FETCH_CURRENT_LOCATION_PERIODIC`. Values below 200 m are ignored. |
+| `setGeofenceMonitoringCount(int)` | `50` | Number of geofences CleverTap monitors simultaneously. Valid range: 1–100 (Android platform limit is 100 per app per device user). |
+| `setGeofenceNotificationResponsiveness(int)` | `0` | Responsiveness in milliseconds for geofence enter/exit alerts. Higher values reduce battery use at the cost of notification latency. |
+
+### Location fetch modes
+
+- **`CTGeofenceSettings.FETCH_LAST_LOCATION_PERIODIC`** — Uses WorkManager to periodically request the last known location from the OS. The location may be less accurate or null if location services are off or have never recorded a position. Offers better battery life.
+- **`CTGeofenceSettings.FETCH_CURRENT_LOCATION_PERIODIC`** — Uses a periodic receiver to request the current device location. Accuracy and battery use depend on the interval, displacement, and accuracy values you configure.
+
+### Location accuracy options
+
+Applies only when using `FETCH_CURRENT_LOCATION_PERIODIC`.
+
+- **`CTGeofenceSettings.ACCURACY_HIGH`** — Uses GPS, Wi-Fi, and cell signals for maximum accuracy. May cause significant battery drain.
+- **`CTGeofenceSettings.ACCURACY_MEDIUM`** — Optimizes for power while maintaining good accuracy. Rarely uses GPS; primarily relies on Wi-Fi and cell.
+- **`CTGeofenceSettings.ACCURACY_LOW`** — Relies mainly on cell towers, providing city-level accuracy with minimal battery impact.
+
+## Geofence callbacks
+
+The SDK provides three callbacks, all delivered on the main thread.
+
+### OnGeofenceApiInitializedListener
+
+Fires when `CTGeofenceAPI` has finished initializing:
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext())
+    .setOnGeofenceApiInitializedListener(new CTGeofenceAPI.OnGeofenceApiInitializedListener() {
+        @Override
+        public void OnGeofenceApiInitialized() {
+            // CTGeofenceAPI is ready
+        }
+    });
+```
+
+### CTGeofenceEventsListener
+
+Fires when the user enters or exits a monitored geofence cluster:
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext())
+    .setCtGeofenceEventsListener(new CTGeofenceEventsListener() {
+        @Override
+        public void onGeofenceEnteredEvent(JSONObject jsonObject) {
+            // User entered a geofence cluster
+        }
+
+        @Override
+        public void onGeofenceExitedEvent(JSONObject jsonObject) {
+            // User exited a geofence cluster
+        }
+    });
+```
+
+The `JSONObject` payload has the following structure:
+
+```json
+{
+    "id": 500043,
+    "gcId": 1,
+    "gcName": "geofenceClusterName",
+    "lat": 19.229493674459807,
+    "lng": 72.82329440116882,
+    "r": 200,
+    "triggered_lat": 19.229493674459807,
+    "triggered_lng": 72.82329440116882
+}
+```
+
+### CTLocationUpdatesListener
+
+Fires whenever the Android OS delivers a new location to the SDK:
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext())
+    .setCtLocationUpdatesListener(new CTLocationUpdatesListener() {
+        @Override
+        public void onLocationUpdates(Location location) {
+            // New location from the Android OS
+        }
+    });
+```
+
+## Triggering a location fetch manually
+
+To fetch the last known location on demand and deliver it via `CTLocationUpdatesListener`:
+
+```java
+try {
+    CTGeofenceAPI.getInstance(getApplicationContext()).triggerLocation();
+} catch (IllegalStateException e) {
+    // Thrown if called before the geofence SDK is initialized
+}
+```
+
+## Deactivating the geofence SDK
+
+To stop all geofence monitoring and remove all listeners:
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext()).deactivate();
+```
+
+## ProGuard rules
+
+If you use ProGuard or R8, add these rules to prevent stripping required classes:
+
+```proguard
+-keep class com.google.android.gms.common.*
+-keep class com.google.android.gms.location.*
+-keep class androidx.concurrent.futures.*
+```

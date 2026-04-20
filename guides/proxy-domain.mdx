@@ -1,0 +1,65 @@
+---
+title: "Configure a custom proxy domain in CleverTap"
+description: "Route CleverTap analytics and push impression events through your own proxy domain using manifest metadata, changeCredentials(), or CleverTapInstanceConfig."
+---
+
+A custom proxy domain lets you route all traffic from the CleverTap SDK through a domain you control before it reaches CleverTap's servers. This is useful when you need to relay events through your own application server, apply additional filtering or enrichment, or satisfy network policies that restrict direct connections to third-party endpoints. CleverTap supports two separate proxy domains: a regular proxy domain for analytics events and a "spiky" proxy domain specifically for push impression events, which tend to spike in volume when a campaign is delivered.
+
+<Note>
+The regular proxy domain handles standard analytics events. The spiky proxy domain is purpose-built for push impression events, which can arrive in large bursts when a push campaign is sent. Configuring both lets you route high-volume impression traffic independently.
+</Note>
+
+## Configuration methods
+
+### Using AndroidManifest.xml
+
+Add the proxy domain metadata entries inside the `<application>` block, alongside your account credentials:
+
+```xml
+<meta-data
+    android:name="CLEVERTAP_ACCOUNT_ID"
+    android:value="YOUR ACCOUNT ID" />
+<meta-data
+    android:name="CLEVERTAP_TOKEN"
+    android:value="YOUR ACCOUNT TOKEN" />
+<meta-data
+    android:name="CLEVERTAP_PROXY_DOMAIN"
+    android:value="YOUR PROXY DOMAIN" />
+<meta-data
+    android:name="CLEVERTAP_SPIKY_PROXY_DOMAIN"
+    android:value="YOUR SPIKY PROXY DOMAIN" />
+```
+
+This approach configures the default CleverTap instance and requires no code changes.
+
+### Using `changeCredentials()`
+
+Call `CleverTapAPI.changeCredentials()` before any CleverTap instance is created. This is equivalent to setting the manifest metadata programmatically and applies to the default instance.
+
+```java
+CleverTapAPI.changeCredentials(
+    "YOUR CLEVERTAP ACCOUNT ID",
+    "YOUR CLEVERTAP ACCOUNT TOKEN",
+    "YOUR PROXY DOMAIN",
+    "YOUR SPIKY PROXY DOMAIN"
+);
+```
+
+### Using `CleverTapInstanceConfig`
+
+For additional CleverTap instances, set the proxy domains directly on the `CleverTapInstanceConfig` object before passing it to `instanceWithConfig()`:
+
+```java
+CleverTapInstanceConfig cleverTapInstanceConfig = CleverTapInstanceConfig.createInstance(
+    applicationContext,
+    "YOUR CLEVERTAP ACCOUNT ID",
+    "YOUR CLEVERTAP ACCOUNT TOKEN"
+);
+
+cleverTapInstanceConfig.setProxyDomain("YOUR PROXY DOMAIN");
+cleverTapInstanceConfig.setSpikyProxyDomain("YOUR SPIKY PROXY DOMAIN");
+
+CleverTapAPI.instanceWithConfig(applicationContext, cleverTapInstanceConfig);
+```
+
+This approach lets different instances route to different proxy domains within the same app.

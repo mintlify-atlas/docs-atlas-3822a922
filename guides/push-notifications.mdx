@@ -1,0 +1,381 @@
+---
+title: "Send push notifications with CleverTap Android"
+description: "Set up FCM push notifications, configure notification channels, handle tokens, request runtime permission, and use push primer in-apps for Android 13+."
+---
+
+CleverTap delivers push notifications on Android through Firebase Cloud Messaging (FCM). The SDK registers the device, receives messages, and renders them — you just need to wire up the manifest entries, handle the FCM token, and create at least one notification channel. For Android 13 and later, you also need to request the POST_NOTIFICATIONS runtime permission.
+
+## Setup
+
+<Steps>
+  <Step title="Add dependencies">
+    Add the CleverTap SDK and Firebase Messaging to your module-level `build.gradle`.
+
+    ```groovy build.gradle
+    dependencies {
+        implementation "com.clevertap.android:clevertap-android-sdk:8.1.0"
+        implementation "androidx.core:core:1.13.0"
+        implementation "com.google.firebase:firebase-messaging:24.0.0"
+    }
+    ```
+  </Step>
+
+  <Step title="Configure AndroidManifest.xml">
+    Register the FCM listener service, the push notification receiver, and the notification intent service inside your `<application>` block.
+
+    ```xml AndroidManifest.xml
+    <!-- FCM message listener -->
+    <service android:name="com.clevertap.android.sdk.pushnotification.fcm.FcmMessageListenerService">
+        <intent-filter>
+            <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent-filter>
+    </service>
+
+    <!-- Tracks push notification events and deep links -->
+    <receiver
+        android:name="com.clevertap.android.sdk.pushnotification.CTPushNotificationReceiver"
+        android:exported="false"
+        android:enabled="true">
+    </receiver>
+
+    <!-- Handles action button dismissal automatically -->
+    <service
+        android:name="com.clevertap.android.sdk.pushnotification.CTNotificationIntentService"
+        android:exported="false">
+        <intent-filter>
+            <action android:name="com.clevertap.PUSH_EVENT"/>
+        </intent-filter>
+    </service>
+    ```
+  </Step>
+
+  <Step title="Set a default notification icon">
+    Add a meta-data entry to specify the small notification icon. Use the drawable file name without its extension.
+
+    ```xml AndroidManifest.xml
+    <meta-data
+        android:name="CLEVERTAP_NOTIFICATION_ICON"
+        android:value="ic_stat_red_star"/>
+    ```
+  </Step>
+
+  <Step title="Create a notification channel">
+    Android 8.0+ requires at least one notification channel before notifications can be displayed. Create it in your `Application` class or after push permission is granted on Android 13+.
+
+    <CodeGroup>
+
+    ```java Java
+    CleverTapAPI.createNotificationChannel(
+        getApplicationContext(),
+        "your_channel_id",
+        "Channel Name",
+        "Channel description",
+        NotificationManager.IMPORTANCE_HIGH,
+        true  // show badge
+    );
+    ```
+
+    ```kotlin Kotlin
+    CleverTapAPI.createNotificationChannel(
+        applicationContext,
+        "your_channel_id",
+        "Channel Name",
+        "Channel description",
+        NotificationManager.IMPORTANCE_HIGH,
+        true
+    )
+    ```
+
+    </CodeGroup>
+  </Step>
+
+  <Step title="Pass the FCM token to CleverTap">
+    Forward the FCM registration token from your `FirebaseMessagingService` subclass.
+
+    <CodeGroup>
+
+    ```java Java
+    @Override
+    public void onNewToken(String token) {
+        super.onNewToken(token);
+        cleverTapAPI.pushFcmRegistrationId(token, true);
+    }
+    ```
+
+    ```kotlin Kotlin
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        cleverTapAPI.pushFcmRegistrationId(token, true)
+    }
+    ```
+
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Notification channel management
+
+Create, group, and delete channels programmatically as your app's notification taxonomy evolves.
+
+<CodeGroup>
+
+```java Java
+// Create a channel group
+CleverTapAPI.createNotificationChannelGroup(
+    getApplicationContext(),
+    "group_id",
+    "Group Name"
+);
+
+// Create a channel inside a group
+CleverTapAPI.createNotificationChannel(
+    getApplicationContext(),
+    "your_channel_id",
+    "Channel Name",
+    "Channel description",
+    NotificationManager.IMPORTANCE_HIGH,
+    true
+);
+
+// Delete a channel
+CleverTapAPI.deleteNotificationChannel(
+    getApplicationContext(),
+    "your_channel_id"
+);
+```
+
+```kotlin Kotlin
+// Create a channel group
+CleverTapAPI.createNotificationChannelGroup(
+    applicationContext,
+    "group_id",
+    "Group Name"
+)
+
+// Create a channel inside a group
+CleverTapAPI.createNotificationChannel(
+    applicationContext,
+    "your_channel_id",
+    "Channel Name",
+    "Channel description",
+    NotificationManager.IMPORTANCE_HIGH,
+    true
+)
+
+// Delete a channel
+CleverTapAPI.deleteNotificationChannel(
+    applicationContext,
+    "your_channel_id"
+)
+```
+
+</CodeGroup>
+
+## Default notification channel fallback
+
+From SDK core v5.1.0, you can declare a default channel ID in the manifest. If the channel referenced in a push payload is not registered on the device, CleverTap will use this channel instead. If this key is also absent, the SDK falls back to a built-in "Miscellaneous" channel.
+
+```xml AndroidManifest.xml
+<meta-data
+    android:name="CLEVERTAP_DEFAULT_CHANNEL_ID"
+    android:value="your_default_channel_id" />
+```
+
+## Pull notifications
+
+Pull Notifications let you reach users on devices where FCM delivery is suppressed. Enable the background sync service by adding the following to your manifest.
+
+```xml AndroidManifest.xml
+<meta-data
+    android:name="CLEVERTAP_BACKGROUND_SYNC"
+    android:value="1"/>
+```
+
+## Push permission for Android 13+
+
+Android 13 (API 33) introduced a runtime permission for showing notifications (`POST_NOTIFICATIONS`). Use the SDK helpers to check and request permission.
+
+<CodeGroup>
+
+```java Java
+// Check if permission is granted
+boolean granted = cleverTapAPI.isPushPermissionGranted();
+
+// Prompt the OS permission dialog directly.
+// Pass true to open the app's notification settings if the user previously denied.
+cleverTapAPI.promptForPushPermission(true);
+```
+
+```kotlin Kotlin
+// Check if permission is granted
+val granted = cleverTapAPI.isPushPermissionGranted
+
+// Prompt the OS permission dialog directly
+cleverTapAPI.promptForPushPermission(true)
+```
+
+</CodeGroup>
+
+<Note>
+On Android 13+ devices, call `createNotificationChannel()` after the permission is accepted to ensure notifications can be displayed. Use the `PushPermissionResponseListener` callback to know when the user has responded.
+</Note>
+
+### Push primer in-apps
+
+Instead of triggering the OS dialog immediately, show a soft-ask in-app notification first to explain the value of notifications before the system prompt appears.
+
+**Half-interstitial style**
+
+<CodeGroup>
+
+```java Java
+JSONObject jsonObject = CTLocalInApp.builder()
+        .setInAppType(CTLocalInApp.InAppType.HALF_INTERSTITIAL)
+        .setTitleText("Get Notified")
+        .setMessageText("Please enable notifications on your device to use Push Notifications.")
+        .followDeviceOrientation(true)
+        .setPositiveBtnText("Allow")
+        .setNegativeBtnText("Cancel")
+        .setBackgroundColor(Constants.WHITE)
+        .setBtnBorderColor(Constants.BLUE)
+        .setTitleTextColor(Constants.BLUE)
+        .setMessageTextColor(Constants.BLACK)
+        .setBtnTextColor(Constants.WHITE)
+        .setImageUrl("https://icons.iconarchive.com/icons/treetog/junior/64/camera-icon.png", "Alt Text")
+        .setBtnBackgroundColor(Constants.BLUE)
+        .build();
+cleverTapAPI.promptPushPrimer(jsonObject);
+```
+
+```kotlin Kotlin
+val jsonObject = CTLocalInApp.builder()
+    .setInAppType(CTLocalInApp.InAppType.HALF_INTERSTITIAL)
+    .setTitleText("Get Notified")
+    .setMessageText("Please enable notifications on your device to use Push Notifications.")
+    .followDeviceOrientation(true)
+    .setPositiveBtnText("Allow")
+    .setNegativeBtnText("Cancel")
+    .setBackgroundColor(Constants.WHITE)
+    .setBtnBorderColor(Constants.BLUE)
+    .setTitleTextColor(Constants.BLUE)
+    .setMessageTextColor(Constants.BLACK)
+    .setBtnTextColor(Constants.WHITE)
+    .setBtnBackgroundColor(Constants.BLUE)
+    .build()
+cleverTapAPI.promptPushPrimer(jsonObject)
+```
+
+</CodeGroup>
+
+**Alert style**
+
+<CodeGroup>
+
+```java Java
+JSONObject jsonObject = CTLocalInApp.builder()
+        .setInAppType(CTLocalInApp.InAppType.ALERT)
+        .setTitleText("Get Notified")
+        .setMessageText("Enable Notification permission")
+        .followDeviceOrientation(true)
+        .setPositiveBtnText("Allow")
+        .setNegativeBtnText("Cancel")
+        .build();
+cleverTapAPI.promptPushPrimer(jsonObject);
+```
+
+```kotlin Kotlin
+val jsonObject = CTLocalInApp.builder()
+    .setInAppType(CTLocalInApp.InAppType.ALERT)
+    .setTitleText("Get Notified")
+    .setMessageText("Enable Notification permission")
+    .followDeviceOrientation(true)
+    .setPositiveBtnText("Allow")
+    .setNegativeBtnText("Cancel")
+    .build()
+cleverTapAPI.promptPushPrimer(jsonObject)
+```
+
+</CodeGroup>
+
+### Push primer builder options
+
+| Method | Parameters | Required |
+|---|---|---|
+| `setInAppType(InAppType)` | `HALF_INTERSTITIAL` or `ALERT` | Yes |
+| `setTitleText(String)` | Title string | Yes |
+| `setMessageText(String)` | Subtitle string | Yes |
+| `followDeviceOrientation(boolean)` | `true` for portrait + landscape | Yes |
+| `setPositiveBtnText(String)` | Accept button label | Yes |
+| `setNegativeBtnText(String)` | Dismiss button label | Yes |
+| `setFallbackToSettings(boolean)` | Open settings if denied | Optional |
+| `setBackgroundColor(String)` | Hex color string | Optional |
+| `setBtnBorderColor(String)` | Hex color string | Optional |
+| `setTitleTextColor(String)` | Hex color string | Optional |
+| `setMessageTextColor(String)` | Hex color string | Optional |
+| `setBtnTextColor(String)` | Hex color string | Optional |
+| `setBtnBackgroundColor(String)` | Hex color string | Optional |
+| `setBtnBorderRadius(String)` | Radius value (default `"2"`) | Optional |
+
+### Handling the permission response
+
+Implement `PushPermissionResponseListener` to react when the user grants or denies the permission, for example to create the notification channel immediately after approval.
+
+<CodeGroup>
+
+```java Java
+public class MainActivity extends AppCompatActivity implements PushPermissionResponseListener {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        CleverTapAPI cleverTapDefaultInstance = CleverTapAPI.getDefaultInstance(this);
+        if (cleverTapDefaultInstance != null) {
+            cleverTapDefaultInstance.registerPushPermissionNotificationResponseListener(this);
+        }
+    }
+
+    @Override
+    public void onPushPermissionResponse(boolean accepted) {
+        if (accepted) {
+            // For Android 13+ create the notification channel after permission is accepted
+            CleverTapAPI.createNotificationChannel(
+                getApplicationContext(),
+                "BRTesting",
+                "Testing Channel",
+                "Testing Channel for BR",
+                NotificationManager.IMPORTANCE_HIGH,
+                true
+            );
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+class HomeScreenActivity : AppCompatActivity(), PushPermissionResponseListener {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val cleverTapDefaultInstance = CleverTapAPI.getDefaultInstance(this)
+        cleverTapDefaultInstance?.apply {
+            pushPermissionNotificationResponseListener = this@HomeScreenActivity
+        }
+    }
+
+    override fun onPushPermissionResponse(accepted: Boolean) {
+        if (accepted) {
+            // For Android 13+ create the notification channel after permission is accepted
+            CleverTapAPI.createNotificationChannel(
+                this,
+                "BRTesting",
+                "Core",
+                "Core notifications",
+                NotificationManager.IMPORTANCE_MAX,
+                true
+            )
+        }
+    }
+}
+```
+
+</CodeGroup>

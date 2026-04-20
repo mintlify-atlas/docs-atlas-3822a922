@@ -1,0 +1,197 @@
+---
+title: "Display Units API reference for CleverTap"
+description: "Reference for CleverTap Android SDK Display Units (native display) API methods, the DisplayUnitListener interface, and the CleverTapDisplayUnit model."
+---
+
+Display Units, also called Native Display or content cards, are server-driven UI components delivered by the CleverTap backend. Unlike push notifications or in-app messages, Display Units give you full rendering control: the SDK delivers structured data (title, message, media, action URL, custom key-value pairs) and your app renders it using its own UI. Use the `DisplayUnitListener` to receive units when they load, then call the click and view tracking methods to record engagement.
+
+---
+
+## CleverTapAPI methods
+
+### `setDisplayUnitListener(DisplayUnitListener listener)`
+
+Registers the listener that receives Display Unit campaigns when they are loaded from the CleverTap backend.
+
+```java
+cleverTap.setDisplayUnitListener(new DisplayUnitListener() {
+    @Override
+    public void onDisplayUnitsLoaded(ArrayList<CleverTapDisplayUnit> units) {
+        // Render units in your UI
+    }
+});
+```
+
+<ParamField path="listener" type="DisplayUnitListener" required>
+  The listener instance to receive `onDisplayUnitsLoaded` callbacks. Pass `null` to remove the current listener.
+</ParamField>
+
+---
+
+### `getAllDisplayUnits()`
+
+Returns the list of currently active Display Unit campaigns that have been loaded from the server. Returns `null` if no Display Unit campaigns are available or the controller has not been initialized.
+
+```java
+ArrayList<CleverTapDisplayUnit> units = cleverTap.getAllDisplayUnits();
+```
+
+**Returns:** `ArrayList<CleverTapDisplayUnit>` or `null`.
+
+---
+
+### `getDisplayUnitForId(String unitID)`
+
+Returns the `CleverTapDisplayUnit` for a specific unit ID, or `null` if no campaign with that ID exists.
+
+```java
+CleverTapDisplayUnit unit = cleverTap.getDisplayUnitForId("unit-id");
+```
+
+<ParamField path="unitID" type="String" required>
+  The unique identifier of the Display Unit. Retrieve it from `CleverTapDisplayUnit#getUnitID()`.
+</ParamField>
+
+**Returns:** `CleverTapDisplayUnit` or `null`.
+
+---
+
+### `pushDisplayUnitClickedEventForID(String unitID)`
+
+Records a click event for the specified Display Unit. Call this when the user taps on a Display Unit to ensure engagement is tracked in CleverTap analytics.
+
+```java
+cleverTap.pushDisplayUnitClickedEventForID(unit.getUnitID());
+```
+
+<ParamField path="unitID" type="String" required>
+  The unique identifier of the clicked Display Unit. Obtain via `CleverTapDisplayUnit#getUnitID()`.
+</ParamField>
+
+---
+
+### `pushDisplayUnitViewedEventForID(String unitID)`
+
+Records an impression event for the specified Display Unit. Call this when a Display Unit becomes visible to the user.
+
+```java
+cleverTap.pushDisplayUnitViewedEventForID(unit.getUnitID());
+```
+
+<ParamField path="unitID" type="String" required>
+  The unique identifier of the viewed Display Unit. Obtain via `CleverTapDisplayUnit#getUnitID()`.
+</ParamField>
+
+---
+
+## DisplayUnitListener interface
+
+Implement this interface and register it with `setDisplayUnitListener()` to receive Display Unit data.
+
+### `onDisplayUnitsLoaded(ArrayList<CleverTapDisplayUnit> units)`
+
+Called when Display Unit campaigns are loaded from the CleverTap server.
+
+<CodeGroup>
+```java Java
+cleverTap.setDisplayUnitListener(new DisplayUnitListener() {
+    @Override
+    public void onDisplayUnitsLoaded(ArrayList<CleverTapDisplayUnit> units) {
+        for (CleverTapDisplayUnit unit : units) {
+            // Access unit.getUnitID(), unit.getType(), unit.getContents(), etc.
+        }
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.setDisplayUnitListener(object : DisplayUnitListener {
+    override fun onDisplayUnitsLoaded(units: ArrayList<CleverTapDisplayUnit>) {
+        for (unit in units) {
+            // Access unit.unitID, unit.type, unit.contents, etc.
+        }
+    }
+})
+```
+</CodeGroup>
+
+<ParamField path="units" type="ArrayList<CleverTapDisplayUnit>" required>
+  The list of currently running Display Unit campaigns. Never `null`, but may be empty.
+</ParamField>
+
+---
+
+## CleverTapDisplayUnit model
+
+`CleverTapDisplayUnit` implements `Parcelable` and represents a single Display Unit campaign. Use its getter methods to access campaign data for rendering.
+
+| Method | Return type | Description |
+|---|---|---|
+| `getUnitID()` | `String` | Unique identifier of this Display Unit. Pass to the click/view tracking methods. |
+| `getType()` | `CTDisplayUnitType` | The display type (for example, `banner`, `carousel`, `custom_key_value`). |
+| `getBgColor()` | `String` | Hex background color string (for example, `#000000`). |
+| `getContents()` | `ArrayList<CleverTapDisplayUnitContent>` | Ordered list of content items (title, message, media, action URL, and so on). |
+| `getCustomExtras()` | `HashMap<String, String>` | Custom key-value pairs configured in the CleverTap dashboard. |
+| `getJsonObject()` | `JSONObject` | The raw JSON payload for this Display Unit. |
+| `getWZRKFields()` | `JSONObject` | A subset of the JSON payload containing only CleverTap internal (`wzrk_`) fields. |
+
+### CleverTapDisplayUnitContent fields
+
+Each item in `getContents()` is a `CleverTapDisplayUnitContent` object with the following readable properties:
+
+| Method | Return type | Description |
+|---|---|---|
+| `getTitle()` | `String` | The title text of this content item. |
+| `getTitleColor()` | `String` | Hex color for the title text. |
+| `getMessage()` | `String` | The body/message text of this content item. |
+| `getMessageColor()` | `String` | Hex color for the message text. |
+| `getIcon()` | `String` | URL of the icon image. |
+| `getMedia()` | `String` | URL of the media asset (image, video, and so on). |
+| `getContentType()` | `String` | MIME type of the media asset. |
+| `getPosterUrl()` | `String` | URL of the video poster image. |
+| `getActionUrl()` | `String` | Deep link or URL to open when the user taps this content item. |
+
+---
+
+## Full integration example
+
+<CodeGroup>
+```java Java
+// 1. Register the listener before the SDK loads units
+cleverTap.setDisplayUnitListener(new DisplayUnitListener() {
+    @Override
+    public void onDisplayUnitsLoaded(ArrayList<CleverTapDisplayUnit> units) {
+        for (CleverTapDisplayUnit unit : units) {
+            String unitID = unit.getUnitID();
+            CleverTapDisplayUnitContent content = unit.getContents().get(0);
+
+            // Render content.getTitle(), content.getMessage(), etc.
+
+            // Record an impression
+            cleverTap.pushDisplayUnitViewedEventForID(unitID);
+        }
+    }
+});
+
+// 2. When user taps a unit
+cleverTap.pushDisplayUnitClickedEventForID(unitID);
+```
+```kotlin Kotlin
+// 1. Register the listener before the SDK loads units
+cleverTap.setDisplayUnitListener(object : DisplayUnitListener {
+    override fun onDisplayUnitsLoaded(units: ArrayList<CleverTapDisplayUnit>) {
+        for (unit in units) {
+            val unitID = unit.unitID
+            val content = unit.contents[0]
+
+            // Render content.title, content.message, etc.
+
+            // Record an impression
+            cleverTap.pushDisplayUnitViewedEventForID(unitID)
+        }
+    }
+})
+
+// 2. When user taps a unit
+cleverTap.pushDisplayUnitClickedEventForID(unitID)
+```
+</CodeGroup>

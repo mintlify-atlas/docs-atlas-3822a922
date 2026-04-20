@@ -1,0 +1,258 @@
+---
+title: "CleverTapInstanceConfig class reference"
+description: "Configure additional CleverTap SDK instances with custom account IDs, tokens, proxy domains, encryption options, and identity settings."
+---
+
+`CleverTapInstanceConfig` holds all configuration options for a `CleverTapAPI` instance. The default instance is configured automatically from metadata in `AndroidManifest.xml`, but when you need a secondary instance — for example, to route data to a different CleverTap account — you create a `CleverTapInstanceConfig` object, set your options on it, and pass it to `CleverTapAPI.instanceWithConfig()`.
+
+<Warning>
+  All configuration must be applied to the `CleverTapInstanceConfig` object **before** passing it to `CleverTapAPI.instanceWithConfig()`. Options set after the SDK instance is created are ignored.
+</Warning>
+
+## Factory method
+
+### `CleverTapInstanceConfig.createInstance(Context, String accountId, String accountToken)`
+
+Creates a new `CleverTapInstanceConfig` for the given account credentials. This is the standard entry point for additional instances.
+
+<ParamField path="context" type="Context" required>
+  The Android application context.
+</ParamField>
+
+<ParamField path="accountId" type="String" required>
+  Your CleverTap Account ID, available from the CleverTap dashboard under Settings.
+</ParamField>
+
+<ParamField path="accountToken" type="String" required>
+  Your CleverTap Account Token, available from the CleverTap dashboard under Settings.
+</ParamField>
+
+<ResponseField name="return" type="CleverTapInstanceConfig">
+  A new config object, or `null` if `accountId` or `accountToken` is `null`.
+</ResponseField>
+
+An overloaded variant accepts an optional `accountRegion` string:
+
+```java java
+CleverTapInstanceConfig config = CleverTapInstanceConfig.createInstance(
+    context, "ACCOUNT_ID", "ACCOUNT_TOKEN", "eu1"
+);
+```
+
+```kotlin kotlin
+val config = CleverTapInstanceConfig.createInstance(
+    context, "ACCOUNT_ID", "ACCOUNT_TOKEN", "eu1"
+)
+```
+
+---
+
+## Configuration setters
+
+### `setDebugLevel(CleverTapAPI.LogLevel debugLevel)`
+
+Sets the log verbosity for this specific instance. This overrides the global `CleverTapAPI.setDebugLevel()` for events logged by this instance.
+
+<ParamField path="debugLevel" type="CleverTapAPI.LogLevel" required>
+  One of `LogLevel.OFF`, `LogLevel.INFO` (default), `LogLevel.DEBUG`, or `LogLevel.VERBOSE`.
+</ParamField>
+
+An `int` overload is also available: `setDebugLevel(int debugLevel)`.
+
+---
+
+### `setAnalyticsOnly(boolean analyticsOnly)`
+
+When set to `true`, this instance operates in analytics-only mode. User engagement features — in-app notifications, the App Inbox, push notifications, and Variables — are disabled. Only event and profile data is sent to CleverTap.
+
+<ParamField path="analyticsOnly" type="boolean" required>
+  Pass `true` to restrict this instance to analytics tracking only.
+</ParamField>
+
+---
+
+### `useGoogleAdId(boolean value)`
+
+Instructs the SDK to use the Google Advertising ID (GAID) as part of device identification for this instance.
+
+<ParamField path="value" type="boolean" required>
+  Pass `true` to enable Google Ad ID usage. Requires the `AD_ID` permission and the Google Play Services Ads library.
+</ParamField>
+
+---
+
+### `setProxyDomain(String proxyDomain)`
+
+Routes all outbound SDK network requests for this instance through a custom proxy domain instead of the default CleverTap endpoints.
+
+<ParamField path="proxyDomain" type="String" required>
+  The fully qualified domain name of your proxy server (for example, `"proxy.example.com"`).
+</ParamField>
+
+---
+
+### `setSpikyProxyDomain(String spikyProxyDomain)`
+
+Sets a secondary proxy domain used for high-priority or "spiky" traffic such as notification delivery.
+
+<ParamField path="spikyProxyDomain" type="String" required>
+  The fully qualified domain name of your spiky proxy server.
+</ParamField>
+
+---
+
+### `setCustomHandshakeDomain(String handshakeDomain)`
+
+Sets a custom domain used for the initial handshake that establishes the SDK's region routing. Set this when using a custom proxy that also handles handshake traffic.
+
+<ParamField path="handshakeDomain" type="String" required>
+  The domain to use for the initial handshake request.
+</ParamField>
+
+---
+
+### `setEnableCustomCleverTapId(boolean enableCustomCleverTapId)`
+
+Enables support for custom CleverTap IDs on this instance. When enabled, you can supply your own user identifier through `CleverTapAPI.getDefaultInstance(Context, String)` or `onUserLogin(Map, String)`.
+
+<ParamField path="enableCustomCleverTapId" type="boolean" required>
+  Pass `true` to allow custom IDs. Defaults to the value in `AndroidManifest.xml`.
+</ParamField>
+
+---
+
+### `setDisableAppLaunchedEvent(boolean disableAppLaunchedEvent)`
+
+Prevents the SDK from automatically sending the `App Launched` event for this instance. Useful when you want full control over when this event is recorded.
+
+<ParamField path="disableAppLaunchedEvent" type="boolean" required>
+  Pass `true` to suppress automatic App Launched events.
+</ParamField>
+
+---
+
+### `setBackgroundSync(boolean backgroundSync)`
+
+Enables or disables background sync for pull notifications (CleverTap PushAmp). When enabled, the SDK periodically syncs in the background to deliver notifications to devices that may not have an active FCM connection.
+
+<ParamField path="backgroundSync" type="boolean" required>
+  Pass `true` to enable background sync.
+</ParamField>
+
+---
+
+### `enablePersonalization(boolean enablePersonalization)`
+
+Enables or disables the Profile/Events Read and Synchronisation API, which powers methods such as `getProperty()`, `getProfile()`, and event history lookups. Personalization is enabled by default.
+
+<ParamField path="enablePersonalization" type="boolean" required>
+  Pass `false` to disable personalization features.
+</ParamField>
+
+---
+
+### `setEncryptionLevel(EncryptionLevel encryptionLevel)`
+
+Sets the encryption level for locally persisted user data such as profile properties and event history.
+
+<ParamField path="encryptionLevel" type="EncryptionLevel" required>
+  Use `EncryptionLevel.NONE` (default) for no encryption or `EncryptionLevel.MEDIUM` for AES encryption of PII fields.
+</ParamField>
+
+---
+
+### `setEncryptionInTransit(boolean encryptionInTransit)`
+
+Enables additional encryption for data sent over the network. When enabled, the payload is encrypted before transmission.
+
+<ParamField path="encryptionInTransit" type="boolean" required>
+  Pass `true` to enable encryption in transit.
+</ParamField>
+
+---
+
+### `setIdentityKeys(String... identityKeys)`
+
+Specifies which profile properties are used as identity keys for this instance. Only valid on non-default instances. Allowed values are defined by `Constants.IdentityType` (typically `"Identity"`, `"Email"`, `"Phone"`).
+
+<ParamField path="identityKeys" type="String..." required>
+  One or more identity key names. Setting this on the default instance has no effect.
+</ParamField>
+
+---
+
+## Complete example
+
+<CodeGroup>
+
+```java java
+// In Application.onCreate(), before calling instanceWithConfig
+
+CleverTapInstanceConfig config = CleverTapInstanceConfig.createInstance(
+    context,
+    "SECOND_ACCOUNT_ID",
+    "SECOND_ACCOUNT_TOKEN"
+);
+
+// Set log level for this instance only
+config.setDebugLevel(CleverTapAPI.LogLevel.DEBUG);
+
+// Analytics-only: no in-app, inbox, or push features
+config.setAnalyticsOnly(false);
+
+// Use Google Advertising ID for device identification
+config.useGoogleAdId(true);
+
+// Route traffic through a custom proxy
+config.setProxyDomain("proxy.example.com");
+config.setSpikyProxyDomain("spiky-proxy.example.com");
+
+// Enable custom user IDs
+config.setEnableCustomCleverTapId(true);
+
+// Suppress automatic App Launched events
+config.setDisableAppLaunchedEvent(false);
+
+// Encrypt locally stored PII
+config.setEncryptionLevel(EncryptionLevel.MEDIUM);
+
+// Create the additional SDK instance
+CleverTapAPI secondInstance = CleverTapAPI.instanceWithConfig(context, config);
+```
+
+```kotlin kotlin
+// In Application.onCreate(), before calling instanceWithConfig
+
+val config = CleverTapInstanceConfig.createInstance(
+    context,
+    "SECOND_ACCOUNT_ID",
+    "SECOND_ACCOUNT_TOKEN"
+)
+
+// Set log level for this instance only
+config.setDebugLevel(CleverTapAPI.LogLevel.DEBUG)
+
+// Analytics-only: no in-app, inbox, or push features
+config.setAnalyticsOnly(false)
+
+// Use Google Advertising ID for device identification
+config.useGoogleAdId(true)
+
+// Route traffic through a custom proxy
+config.setProxyDomain("proxy.example.com")
+config.setSpikyProxyDomain("spiky-proxy.example.com")
+
+// Enable custom user IDs
+config.setEnableCustomCleverTapId(true)
+
+// Suppress automatic App Launched events
+config.setDisableAppLaunchedEvent(false)
+
+// Encrypt locally stored PII
+config.setEncryptionLevel(EncryptionLevel.MEDIUM)
+
+// Create the additional SDK instance
+val secondInstance = CleverTapAPI.instanceWithConfig(context, config)
+```
+
+</CodeGroup>

@@ -1,0 +1,469 @@
+---
+title: "App Inbox API reference for CleverTap"
+description: "Reference for CleverTapAPI App Inbox methods: initialization, display, message read/delete operations, and CTInboxStyleConfig styling properties."
+---
+
+The CleverTap App Inbox is a persistent in-app message centre. Use the `CleverTapAPI` methods documented here to initialize the controller, display or dismiss the inbox UI, manage individual messages, track impressions and clicks, and style the inbox with `CTInboxStyleConfig`. Register a `CTInboxListener` before calling `initializeInbox()` to receive initialization and update callbacks.
+
+---
+
+## Initialization
+
+### `initializeInbox`
+
+```java
+public void initializeInbox()
+```
+
+Initializes the inbox controller for this instance. After initialization completes, the `CTInboxListener` callbacks `inboxDidInitialize()` and `inboxMessagesDidUpdate()` are invoked. Call this method separately for each `CleverTapAPI` instance that needs inbox support.
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.setCTNotificationInboxListener(this);
+cleverTapAPI.initializeInbox();
+```
+
+```kotlin Kotlin
+cleverTapAPI.setCTNotificationInboxListener(this)
+cleverTapAPI.initializeInbox()
+```
+
+</CodeGroup>
+
+---
+
+### `setCTNotificationInboxListener`
+
+```java
+public void setCTNotificationInboxListener(CTInboxListener notificationInboxListener)
+```
+
+Registers a `CTInboxListener` to receive `inboxDidInitialize()` and `inboxMessagesDidUpdate()` callbacks. Set this listener before calling `initializeInbox()`.
+
+<ParamField path="notificationInboxListener" type="CTInboxListener" required>
+  Listener implementation. Implement `inboxDidInitialize()` to display the inbox once it is ready, and `inboxMessagesDidUpdate()` to refresh badge counts or local state.
+</ParamField>
+
+---
+
+## Display
+
+### `showAppInbox(CTInboxStyleConfig)`
+
+```java
+public void showAppInbox(CTInboxStyleConfig styleConfig)
+```
+
+Opens the `CTInboxActivity` with the provided style configuration. `initializeInbox()` must have completed before calling this method.
+
+<ParamField path="styleConfig" type="CTInboxStyleConfig" required>
+  A `CTInboxStyleConfig` object defining the visual appearance of the inbox. See the [CTInboxStyleConfig properties](#ctinboxstyleconfig-properties) section for all available options.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+@Override
+public void inboxDidInitialize() {
+    CTInboxStyleConfig styleConfig = new CTInboxStyleConfig();
+    styleConfig.setNavBarTitle("Notifications");
+    styleConfig.setNavBarColor("#FFFFFF");
+    cleverTapAPI.showAppInbox(styleConfig);
+}
+```
+
+```kotlin Kotlin
+override fun inboxDidInitialize() {
+    val styleConfig = CTInboxStyleConfig().apply {
+        setNavBarTitle("Notifications")
+        setNavBarColor("#FFFFFF")
+    }
+    cleverTapAPI.showAppInbox(styleConfig)
+}
+```
+
+</CodeGroup>
+
+---
+
+### `showAppInbox()`
+
+```java
+public void showAppInbox()
+```
+
+Opens the `CTInboxActivity` with default style settings.
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.showAppInbox();
+```
+
+```kotlin Kotlin
+cleverTapAPI.showAppInbox()
+```
+
+</CodeGroup>
+
+---
+
+### `dismissAppInbox`
+
+```java
+public void dismissAppInbox()
+```
+
+Programmatically dismisses the `CTInboxActivity` if it is currently open. This is useful when your business logic requires closing the inbox from outside the activity.
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.dismissAppInbox();
+```
+
+```kotlin Kotlin
+cleverTapAPI.dismissAppInbox()
+```
+
+</CodeGroup>
+
+---
+
+## Message management
+
+### `markReadInboxMessage(CTInboxMessage)`
+
+```java
+public void markReadInboxMessage(CTInboxMessage message)
+```
+
+Marks the given `CTInboxMessage` object as read.
+
+<ParamField path="message" type="CTInboxMessage" required>
+  The inbox message object to mark as read.
+</ParamField>
+
+---
+
+### `markReadInboxMessage(String)`
+
+```java
+public void markReadInboxMessage(String messageId)
+```
+
+Marks the inbox message identified by `messageId` as read.
+
+<ParamField path="messageId" type="String" required>
+  The string message ID of the `CTInboxMessage` to mark as read.
+</ParamField>
+
+---
+
+### `markReadInboxMessagesForIDs`
+
+```java
+public void markReadInboxMessagesForIDs(ArrayList<String> messageIDs)
+```
+
+Marks multiple inbox messages as read in a single call.
+
+<ParamField path="messageIDs" type="ArrayList<String>" required>
+  List of message ID strings to mark as read.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+ArrayList<String> ids = new ArrayList<>();
+ids.add("msg_001");
+ids.add("msg_002");
+cleverTapAPI.markReadInboxMessagesForIDs(ids);
+```
+
+```kotlin Kotlin
+val ids = arrayListOf("msg_001", "msg_002")
+cleverTapAPI.markReadInboxMessagesForIDs(ids)
+```
+
+</CodeGroup>
+
+---
+
+### `deleteInboxMessage(CTInboxMessage)`
+
+```java
+public void deleteInboxMessage(CTInboxMessage message)
+```
+
+Deletes the given `CTInboxMessage` object from the inbox.
+
+<ParamField path="message" type="CTInboxMessage" required>
+  The inbox message object to delete.
+</ParamField>
+
+---
+
+### `deleteInboxMessage(String)`
+
+```java
+public void deleteInboxMessage(String messageId)
+```
+
+Deletes the inbox message identified by `messageId`.
+
+<ParamField path="messageId" type="String" required>
+  The string message ID of the `CTInboxMessage` to delete.
+</ParamField>
+
+---
+
+### `deleteInboxMessagesForIDs`
+
+```java
+public void deleteInboxMessagesForIDs(ArrayList<String> messageIDs)
+```
+
+Deletes multiple inbox messages in a single call.
+
+<ParamField path="messageIDs" type="ArrayList<String>" required>
+  List of message ID strings to delete.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+ArrayList<String> ids = new ArrayList<>();
+ids.add("msg_001");
+ids.add("msg_002");
+cleverTapAPI.deleteInboxMessagesForIDs(ids);
+```
+
+```kotlin Kotlin
+val ids = arrayListOf("msg_001", "msg_002")
+cleverTapAPI.deleteInboxMessagesForIDs(ids)
+```
+
+</CodeGroup>
+
+---
+
+### `pushInboxNotificationClickedEvent`
+
+```java
+public void pushInboxNotificationClickedEvent(String messageId)
+```
+
+Raises a Notification Clicked event for the specified inbox message. Use this when building a custom inbox UI to ensure clicks are tracked in the CleverTap dashboard.
+
+<ParamField path="messageId" type="String" required>
+  The message ID of the clicked `CTInboxMessage`.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.pushInboxNotificationClickedEvent(message.getMessageId());
+```
+
+```kotlin Kotlin
+cleverTapAPI.pushInboxNotificationClickedEvent(message.messageId)
+```
+
+</CodeGroup>
+
+---
+
+### `pushInboxNotificationViewedEvent`
+
+```java
+public void pushInboxNotificationViewedEvent(String messageId)
+```
+
+Raises a Notification Viewed event for the specified inbox message. Use this when building a custom inbox UI to record impressions.
+
+<ParamField path="messageId" type="String" required>
+  The message ID of the viewed `CTInboxMessage`.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.pushInboxNotificationViewedEvent(message.getMessageId());
+```
+
+```kotlin Kotlin
+cleverTapAPI.pushInboxNotificationViewedEvent(message.messageId)
+```
+
+</CodeGroup>
+
+---
+
+## CTInboxStyleConfig properties
+
+`CTInboxStyleConfig` controls the visual appearance of the `CTInboxActivity`. All color values must be provided as hex color strings (for example `"#FF0000"`). Instantiate the object, apply setters, and pass it to `showAppInbox(CTInboxStyleConfig)`.
+
+<Note>A maximum of two additional tabs are supported. If `setTabs()` is called with more than two entries, only the first two are used.</Note>
+
+<ParamField path="setFirstTabTitle(String)" type="String" default="ALL">
+  Sets the label for the default first tab that shows all messages.
+</ParamField>
+
+<ParamField path="setTabs(ArrayList<String>)" type="ArrayList<String>">
+  Sets up to two additional category tabs. Tab content is filtered based on the tab name. Omit this setter if you do not want tabs.
+</ParamField>
+
+<ParamField path="setTabBackgroundColor(String)" type="String" default="#FFFFFF">
+  Hex color for the background of the tab bar.
+</ParamField>
+
+<ParamField path="setSelectedTabIndicatorColor(String)" type="String" default="#1C84FE">
+  Hex color for the underline indicator of the selected tab.
+</ParamField>
+
+<ParamField path="setSelectedTabColor(String)" type="String" default="#1C84FE">
+  Hex color for the text of the selected tab.
+</ParamField>
+
+<ParamField path="setUnselectedTabColor(String)" type="String" default="#808080">
+  Hex color for the text of unselected tabs.
+</ParamField>
+
+<ParamField path="setBackButtonColor(String)" type="String" default="#333333">
+  Hex color for the back button arrow in the navigation toolbar.
+</ParamField>
+
+<ParamField path="setNavBarTitleColor(String)" type="String" default="#333333">
+  Hex color for the title text in the navigation toolbar.
+</ParamField>
+
+<ParamField path="setNavBarTitle(String)" type="String" default="App Inbox">
+  Text displayed as the title in the navigation toolbar.
+</ParamField>
+
+<ParamField path="setNavBarColor(String)" type="String" default="#FFFFFF">
+  Hex color for the navigation toolbar background.
+</ParamField>
+
+<ParamField path="setInboxBackgroundColor(String)" type="String" default="#D3D4DA">
+  Hex color for the background of the inbox message list.
+</ParamField>
+
+### Full styling example
+
+<CodeGroup>
+
+```java Java
+ArrayList<String> tabs = new ArrayList<>();
+tabs.add("Promotions");
+tabs.add("Offers");
+
+CTInboxStyleConfig styleConfig = new CTInboxStyleConfig();
+styleConfig.setFirstTabTitle("All");
+styleConfig.setTabs(tabs);
+styleConfig.setTabBackgroundColor("#FFFFFF");
+styleConfig.setSelectedTabIndicatorColor("#0000FF");
+styleConfig.setSelectedTabColor("#000000");
+styleConfig.setUnselectedTabColor("#FFFFFF");
+styleConfig.setBackButtonColor("#FF0000");
+styleConfig.setNavBarTitleColor("#FF0000");
+styleConfig.setNavBarTitle("My Inbox");
+styleConfig.setNavBarColor("#FFFFFF");
+styleConfig.setInboxBackgroundColor("#00FF00");
+
+cleverTapAPI.showAppInbox(styleConfig);
+```
+
+```kotlin Kotlin
+val tabs = arrayListOf("Promotions", "Offers")
+
+val styleConfig = CTInboxStyleConfig().apply {
+    setFirstTabTitle("All")
+    setTabs(tabs)
+    setTabBackgroundColor("#FFFFFF")
+    setSelectedTabIndicatorColor("#0000FF")
+    setSelectedTabColor("#000000")
+    setUnselectedTabColor("#FFFFFF")
+    setBackButtonColor("#FF0000")
+    setNavBarTitleColor("#FF0000")
+    setNavBarTitle("My Inbox")
+    setNavBarColor("#FFFFFF")
+    setInboxBackgroundColor("#00FF00")
+}
+
+cleverTapAPI.showAppInbox(styleConfig)
+```
+
+</CodeGroup>
+
+---
+
+## Listeners
+
+### `setInboxMessageButtonListener`
+
+```java
+public void setInboxMessageButtonListener(InboxMessageButtonListener listener)
+```
+
+Registers a listener that receives `onInboxButtonClick(HashMap<String, String>)` callbacks when a KV-type button inside an inbox message is tapped. The listener is held as a `WeakReference`.
+
+<ParamField path="listener" type="InboxMessageButtonListener" required>
+  Listener implementation. Receives a map of key-value pairs when a KV button is clicked.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.setInboxMessageButtonListener(payload -> {
+    Log.d("CT", "Inbox button clicked with payload: " + payload);
+});
+```
+
+```kotlin Kotlin
+cleverTapAPI.setInboxMessageButtonListener { payload ->
+    Log.d("CT", "Inbox button clicked with payload: $payload")
+}
+```
+
+</CodeGroup>
+
+---
+
+### `setCTInboxMessageListener`
+
+```java
+public void setCTInboxMessageListener(InboxMessageListener listener)
+```
+
+Registers a listener that receives `onInboxItemClicked(CTInboxMessage, int, int)` callbacks when an inbox message item or button is tapped. The `contentPageIndex` indicates the carousel page (always 0 for non-carousel templates). The `buttonIndex` is -1 when the body of the message is tapped, or 0–2 for a CTA button. The listener is held as a `WeakReference`.
+
+<ParamField path="listener" type="InboxMessageListener" required>
+  Listener implementation.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.setCTInboxMessageListener((message, contentPageIndex, buttonIndex) -> {
+    if (buttonIndex == -1) {
+        Log.d("CT", "Inbox item body tapped, type: " + message.type);
+    } else {
+        Log.d("CT", "Inbox button tapped at index: " + buttonIndex);
+    }
+});
+```
+
+```kotlin Kotlin
+cleverTapAPI.setCTInboxMessageListener { message, contentPageIndex, buttonIndex ->
+    if (buttonIndex == -1) {
+        Log.d("CT", "Inbox item body tapped, type: ${message.type}")
+    } else {
+        Log.d("CT", "Inbox button tapped at index: $buttonIndex")
+    }
+}
+```
+
+</CodeGroup>

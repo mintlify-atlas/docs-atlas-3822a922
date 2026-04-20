@@ -1,0 +1,707 @@
+---
+title: "Push notification API reference for CleverTap"
+description: "Reference for CleverTapAPI push methods: FCM token management, notification creation, channel setup, permission requests, click tracking, and bitmap utilities."
+---
+
+The `CleverTapAPI` class exposes a set of static and instance methods for every aspect of push notification handling — registering device tokens, building and rendering notifications, managing Android notification channels, requesting runtime permission on Android 13+, and tracking delivery and click events. Most notification-creation and channel methods are static and do not require a live instance.
+
+---
+
+## Token methods
+
+### `fcmTokenRefresh`
+
+<Warning>Deprecated since core v5.1.0. Use `tokenRefresh` from your `onNewToken` implementation instead.</Warning>
+
+```java
+public static void fcmTokenRefresh(Context context, String token)
+```
+
+Iterates over all available `CleverTapAPI` instances and refreshes the FCM token for each non-analytics-only instance.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="token" type="String" required>
+  The FCM registration token to refresh.
+</ParamField>
+
+---
+
+### `tokenRefresh`
+
+```java
+public static void tokenRefresh(Context context, String token, PushType pushType)
+```
+
+Refreshes the push token for the given `PushType` across all available instances. Call this from `onNewToken` in your messaging service.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="token" type="String" required>
+  The new push registration token.
+</ParamField>
+<ParamField path="pushType" type="PushType" required>
+  The push provider type (for example, `PushType.FCM`).
+</ParamField>
+
+---
+
+### `pushFcmRegistrationId`
+
+```java
+public void pushFcmRegistrationId(String fcmId, boolean register)
+```
+
+Sends the FCM registration ID to CleverTap on the current instance.
+
+<ParamField path="fcmId" type="String" required>
+  The FCM registration ID.
+</ParamField>
+<ParamField path="register" type="boolean" required>
+  Pass `true` to opt the device into CleverTap push; `false` to opt out.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.pushFcmRegistrationId(fcmToken, true);
+```
+
+```kotlin Kotlin
+cleverTapAPI.pushFcmRegistrationId(fcmToken, true)
+```
+
+</CodeGroup>
+
+---
+
+### `pushRegistrationToken`
+
+```java
+public void pushRegistrationToken(String token, PushType pushType, boolean register)
+```
+
+Generic token registration for any supported push provider.
+
+<ParamField path="token" type="String" required>
+  The push registration token.
+</ParamField>
+<ParamField path="pushType" type="PushType" required>
+  The push provider type (for example, `PushType.FCM`).
+</ParamField>
+<ParamField path="register" type="boolean" required>
+  Pass `true` to register; `false` to unregister.
+</ParamField>
+
+---
+
+### `getDevicePushToken`
+
+```java
+public String getDevicePushToken(PushType type)
+```
+
+Returns the cached device push token for the given `PushType`, or `null` if not yet available. On initial install the token may not be available immediately — implement `DevicePushTokenRefreshListener` to receive a callback when the token arrives.
+
+<ParamField path="type" type="PushType" required>
+  The push provider type whose token to retrieve.
+</ParamField>
+
+---
+
+### `getPushToken`
+
+```java
+public String getPushToken(@NonNull PushType pushType)
+```
+
+Returns the cached token for the specified `PushType`. Functionally equivalent to `getDevicePushToken`.
+
+<ParamField path="pushType" type="PushType" required>
+  The push provider type whose token to retrieve.
+</ParamField>
+
+---
+
+## Notification creation
+
+### `createNotification(Context, Bundle)`
+
+```java
+public static void createNotification(Context context, Bundle extras)
+```
+
+Launches an asynchronous task that downloads the notification icon from CleverTap and renders the Android notification. Use this when implementing your own FCM handling.
+
+<Note>Starting from core v5.1.0 this method runs on the caller's thread. Call it inside `onMessageReceived()` of your messaging service.</Note>
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="extras" type="Bundle" required>
+  The `Bundle` received by the FCM broadcast receiver.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+@Override
+public void onMessageReceived(RemoteMessage message) {
+    Bundle extras = mParser.toBundle(message);
+    CleverTapAPI.createNotification(getApplicationContext(), extras);
+}
+```
+
+```kotlin Kotlin
+override fun onMessageReceived(message: RemoteMessage) {
+    val extras = mParser.toBundle(message)
+    CleverTapAPI.createNotification(applicationContext, extras)
+}
+```
+
+</CodeGroup>
+
+---
+
+### `createNotification(Context, Bundle, int)`
+
+```java
+public static void createNotification(Context context, Bundle extras, int notificationId)
+```
+
+Same as `createNotification(Context, Bundle)` but accepts a custom notification ID.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="extras" type="Bundle" required>
+  The `Bundle` received by the FCM broadcast receiver.
+</ParamField>
+<ParamField path="notificationId" type="int" required>
+  A custom integer ID used to identify or replace this notification.
+</ParamField>
+
+---
+
+### `processPushNotification`
+
+```java
+public static void processPushNotification(Context context, Bundle extras)
+```
+
+Passes a push notification payload to CleverTap for smooth functioning of Pull Notifications.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="extras" type="Bundle" required>
+  The `Bundle` received via FCM or Pull Notifications.
+</ParamField>
+
+---
+
+## Notification channels
+
+<Note>All channel and group methods require **Android O (API 26)** or higher. They are safe to call on earlier versions — the SDK guards against them internally for the basic overload; other overloads carry `@RequiresApi(api = Build.VERSION_CODES.O)`.</Note>
+
+### `createNotificationChannel` — basic
+
+```java
+public static void createNotificationChannel(
+    Context context,
+    String channelId,
+    CharSequence channelName,
+    String channelDescription,
+    int importance,
+    boolean showBadge
+)
+```
+
+Creates a notification channel asynchronously.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="channelId" type="String" required>
+  Unique identifier for the channel.
+</ParamField>
+<ParamField path="channelName" type="CharSequence" required>
+  User-visible name of the channel.
+</ParamField>
+<ParamField path="channelDescription" type="String" required>
+  User-visible description of the channel.
+</ParamField>
+<ParamField path="importance" type="int" required>
+  Importance level (`NotificationManager.IMPORTANCE_*` constants).
+</ParamField>
+<ParamField path="showBadge" type="boolean" required>
+  Whether notifications on this channel show a badge.
+</ParamField>
+
+---
+
+### `createNotificationChannel` — with group
+
+```java
+public static void createNotificationChannel(
+    Context context,
+    String channelId,
+    CharSequence channelName,
+    String channelDescription,
+    int importance,
+    String groupId,
+    boolean showBadge
+)
+```
+
+Creates a notification channel and assigns it to an existing channel group.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="channelId" type="String" required>
+  Unique identifier for the channel.
+</ParamField>
+<ParamField path="channelName" type="CharSequence" required>
+  User-visible name of the channel.
+</ParamField>
+<ParamField path="channelDescription" type="String" required>
+  User-visible description of the channel.
+</ParamField>
+<ParamField path="importance" type="int" required>
+  Importance level.
+</ParamField>
+<ParamField path="groupId" type="String" required>
+  ID of the `NotificationChannelGroup` to assign this channel to.
+</ParamField>
+<ParamField path="showBadge" type="boolean" required>
+  Whether notifications on this channel show a badge.
+</ParamField>
+
+---
+
+### `createNotificationChannel` — with custom sound
+
+```java
+public static void createNotificationChannel(
+    Context context,
+    String channelId,
+    CharSequence channelName,
+    String channelDescription,
+    int importance,
+    boolean showBadge,
+    String sound
+)
+```
+
+Creates a notification channel with a custom sound from the app's `raw` directory.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="channelId" type="String" required>
+  Unique identifier for the channel.
+</ParamField>
+<ParamField path="channelName" type="CharSequence" required>
+  User-visible name of the channel.
+</ParamField>
+<ParamField path="channelDescription" type="String" required>
+  User-visible description of the channel.
+</ParamField>
+<ParamField path="importance" type="int" required>
+  Importance level.
+</ParamField>
+<ParamField path="showBadge" type="boolean" required>
+  Whether notifications on this channel show a badge.
+</ParamField>
+<ParamField path="sound" type="String" required>
+  Filename of the raw sound resource (for example `"alert.mp3"`). Supported extensions: `.mp3`, `.ogg`, `.wav`.
+</ParamField>
+
+---
+
+### `createNotificationChannel` — with group and custom sound
+
+```java
+public static void createNotificationChannel(
+    Context context,
+    String channelId,
+    CharSequence channelName,
+    String channelDescription,
+    int importance,
+    String groupId,
+    boolean showBadge,
+    String sound
+)
+```
+
+Creates a notification channel assigned to a group, with a custom sound.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="channelId" type="String" required>
+  Unique identifier for the channel.
+</ParamField>
+<ParamField path="channelName" type="CharSequence" required>
+  User-visible name of the channel.
+</ParamField>
+<ParamField path="channelDescription" type="String" required>
+  User-visible description of the channel.
+</ParamField>
+<ParamField path="importance" type="int" required>
+  Importance level.
+</ParamField>
+<ParamField path="groupId" type="String" required>
+  ID of the `NotificationChannelGroup` to assign this channel to.
+</ParamField>
+<ParamField path="showBadge" type="boolean" required>
+  Whether notifications on this channel show a badge.
+</ParamField>
+<ParamField path="sound" type="String" required>
+  Filename of the raw sound resource.
+</ParamField>
+
+---
+
+### `createNotificationChannelGroup`
+
+```java
+public static void createNotificationChannelGroup(
+    Context context,
+    String groupId,
+    CharSequence groupName
+)
+```
+
+Creates a notification channel group asynchronously.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="groupId" type="String" required>
+  Unique identifier for the group.
+</ParamField>
+<ParamField path="groupName" type="CharSequence" required>
+  User-visible name of the group.
+</ParamField>
+
+---
+
+### `deleteNotificationChannel`
+
+```java
+public static void deleteNotificationChannel(Context context, String channelId)
+```
+
+Deletes the specified notification channel asynchronously.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="channelId" type="String" required>
+  ID of the channel to delete.
+</ParamField>
+
+---
+
+### `deleteNotificationChannelGroup`
+
+```java
+public static void deleteNotificationChannelGroup(Context context, String groupId)
+```
+
+Deletes the specified notification channel group asynchronously.
+
+<ParamField path="context" type="Context" required>
+  Android application context.
+</ParamField>
+<ParamField path="groupId" type="String" required>
+  ID of the group to delete.
+</ParamField>
+
+---
+
+## Permission methods
+
+### `isPushPermissionGranted`
+
+```java
+public boolean isPushPermissionGranted()
+```
+
+Checks whether the POST_NOTIFICATIONS runtime permission is granted. Returns `true` if granted, `false` if denied. Relevant for Android 13 (API 33) and above.
+
+<CodeGroup>
+
+```java Java
+boolean granted = cleverTapAPI.isPushPermissionGranted();
+```
+
+```kotlin Kotlin
+val granted = cleverTapAPI.isPushPermissionGranted()
+```
+
+</CodeGroup>
+
+---
+
+### `promptForPushPermission`
+
+```java
+public void promptForPushPermission(boolean showFallbackSettings)
+```
+
+Directly invokes the OS runtime notification permission dialog, bypassing the push primer in-app. For Android 13+ only.
+
+<ParamField path="showFallbackSettings" type="boolean" required>
+  If `true` and the permission has already been denied, shows an alert dialog directing the user to the app's notification settings page. If `false`, logs a verbose message instead.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.promptForPushPermission(true);
+```
+
+```kotlin Kotlin
+cleverTapAPI.promptForPushPermission(true)
+```
+
+</CodeGroup>
+
+---
+
+### `promptPushPrimer`
+
+```java
+public void promptPushPrimer(JSONObject jsonObject)
+```
+
+Displays a local in-app push primer before requesting the OS notification permission. Build the `JSONObject` configuration using `CTLocalInApp.builder()`. See the [in-app notification API](/api/in-app-notification-api) for the full `CTLocalInApp.builder()` reference.
+
+<ParamField path="jsonObject" type="JSONObject" required>
+  Configuration object produced by `CTLocalInApp.builder()`.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+JSONObject jsonObject = CTLocalInApp.builder()
+    .setInAppType(CTLocalInApp.InAppType.HALF_INTERSTITIAL)
+    .setTitleText("Get Notified")
+    .setMessageText("Please enable notifications to stay up to date.")
+    .followDeviceOrientation(true)
+    .setPositiveBtnText("Allow")
+    .setNegativeBtnText("Cancel")
+    .setBackgroundColor("#FFFFFF")
+    .setBtnBorderColor("#1C84FE")
+    .setTitleTextColor("#1C84FE")
+    .setMessageTextColor("#000000")
+    .setBtnTextColor("#FFFFFF")
+    .setBtnBackgroundColor("#1C84FE")
+    .build();
+
+cleverTapAPI.promptPushPrimer(jsonObject);
+```
+
+```kotlin Kotlin
+val jsonObject = CTLocalInApp.builder()
+    .setInAppType(CTLocalInApp.InAppType.HALF_INTERSTITIAL)
+    .setTitleText("Get Notified")
+    .setMessageText("Please enable notifications to stay up to date.")
+    .followDeviceOrientation(true)
+    .setPositiveBtnText("Allow")
+    .setNegativeBtnText("Cancel")
+    .setBackgroundColor("#FFFFFF")
+    .setBtnBorderColor("#1C84FE")
+    .setTitleTextColor("#1C84FE")
+    .setMessageTextColor("#000000")
+    .setBtnTextColor("#FFFFFF")
+    .setBtnBackgroundColor("#1C84FE")
+    .build()
+
+cleverTapAPI.promptPushPrimer(jsonObject)
+```
+
+</CodeGroup>
+
+---
+
+## Notification handler
+
+### `setNotificationHandler` — static
+
+```java
+public static void setNotificationHandler(NotificationHandler notificationHandler)
+```
+
+Sets a global `NotificationHandler` that intercepts CleverTap's notification rendering pipeline. This is a static method and takes effect across all instances.
+
+<ParamField path="notificationHandler" type="NotificationHandler" required>
+  Implementation of `NotificationHandler` that handles notification rendering.
+</ParamField>
+
+---
+
+## Tracking
+
+### `pushNotificationClickedEvent`
+
+```java
+public void pushNotificationClickedEvent(Bundle extras)
+```
+
+Raises a Notification Clicked event on CleverTap for the given notification payload.
+
+<ParamField path="extras" type="Bundle" required>
+  The `Bundle` containing notification details, as received by your broadcast receiver or activity.
+</ParamField>
+
+---
+
+### `pushNotificationViewedEvent`
+
+```java
+public void pushNotificationViewedEvent(Bundle extras)
+```
+
+Raises a Notification Viewed event on CleverTap for the given notification payload.
+
+<ParamField path="extras" type="Bundle" required>
+  The `Bundle` containing notification details.
+</ParamField>
+
+---
+
+### `pushInstallReferrer`
+
+```java
+public void pushInstallReferrer(String url)
+```
+
+Reports an install referrer URL to CleverTap for attribution.
+
+<ParamField path="url" type="String" required>
+  The full install referrer URL string including UTM parameters.
+</ParamField>
+
+---
+
+## Bitmap utilities
+
+Both methods must be called on a **background thread**. They return `null` if the download fails, times out, or the network is unavailable.
+
+### `getNotificationBitmapWithTimeout`
+
+```java
+public static @Nullable Bitmap getNotificationBitmapWithTimeout(
+    Context context,
+    Bundle bundle,
+    String bitmapSrcUrl,
+    boolean fallbackToAppIcon,
+    long timeoutInMillis
+)
+```
+
+Downloads a notification bitmap with a configurable timeout. Use this for custom notification rendering.
+
+<ParamField path="context" type="Context" required>
+  Android application context. Must not be `null`.
+</ParamField>
+<ParamField path="bundle" type="Bundle" required>
+  The push payload `Bundle` received from FCM. Must not be `null`.
+</ParamField>
+<ParamField path="bitmapSrcUrl" type="String" required>
+  URL of the image to download.
+</ParamField>
+<ParamField path="fallbackToAppIcon" type="boolean" required>
+  If `true`, returns the app icon when the bitmap cannot be downloaded.
+</ParamField>
+<ParamField path="timeoutInMillis" type="long" required>
+  Download timeout in milliseconds. Must be between 1 and 20000 (inclusive).
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+@Override
+public void onMessageReceived(RemoteMessage message) {
+    Bundle bundle = mParser.toBundle(message);
+    // Must be on a background thread
+    Bitmap bitmap = CleverTapAPI.getNotificationBitmapWithTimeout(
+        context, bundle, "https://example.com/icon.png", true, 5000);
+}
+```
+
+```kotlin Kotlin
+override fun onMessageReceived(message: RemoteMessage) {
+    val bundle = mParser.toBundle(message)
+    // Must be on a background thread
+    val bitmap = CleverTapAPI.getNotificationBitmapWithTimeout(
+        context, bundle, "https://example.com/icon.png", true, 5000)
+}
+```
+
+</CodeGroup>
+
+---
+
+### `getNotificationBitmapWithTimeoutAndSize`
+
+```java
+public static @Nullable Bitmap getNotificationBitmapWithTimeoutAndSize(
+    Context context,
+    Bundle bundle,
+    String bitmapSrcUrl,
+    boolean fallbackToAppIcon,
+    long timeoutInMillis,
+    int sizeInBytes
+)
+```
+
+Downloads a notification bitmap with a configurable timeout and maximum file size. Returns `null` if the bitmap exceeds `sizeInBytes`.
+
+<ParamField path="context" type="Context" required>
+  Android application context. Must not be `null`.
+</ParamField>
+<ParamField path="bundle" type="Bundle" required>
+  The push payload `Bundle` received from FCM. Must not be `null`.
+</ParamField>
+<ParamField path="bitmapSrcUrl" type="String" required>
+  URL of the image to download.
+</ParamField>
+<ParamField path="fallbackToAppIcon" type="boolean" required>
+  If `true`, returns the app icon when the bitmap cannot be downloaded.
+</ParamField>
+<ParamField path="timeoutInMillis" type="long" required>
+  Download timeout in milliseconds. Must be between 1 and 20000 (inclusive).
+</ParamField>
+<ParamField path="sizeInBytes" type="int" required>
+  Maximum size of the bitmap in bytes. Must be greater than 0.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+@Override
+public void onMessageReceived(RemoteMessage message) {
+    Bundle bundle = mParser.toBundle(message);
+    // Must be on a background thread
+    Bitmap bitmap = CleverTapAPI.getNotificationBitmapWithTimeoutAndSize(
+        context, bundle, "https://example.com/icon.png", true, 5000, 102400);
+}
+```
+
+```kotlin Kotlin
+override fun onMessageReceived(message: RemoteMessage) {
+    val bundle = mParser.toBundle(message)
+    // Must be on a background thread
+    val bitmap = CleverTapAPI.getNotificationBitmapWithTimeoutAndSize(
+        context, bundle, "https://example.com/icon.png", true, 5000, 102400)
+}
+```
+
+</CodeGroup>

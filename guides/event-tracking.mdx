@@ -1,0 +1,185 @@
+---
+title: "Track events and purchases with CleverTap"
+description: "Learn how to record custom events, attach properties, track purchases with charged events, and capture screens and errors in your Android app."
+---
+
+The CleverTap Android SDK lets you record any user action as an event. Events can carry properties (key-value pairs), and a special charged event type captures purchase transactions with line-item detail. You can also record screen views, errors, and deep-link interactions to build a complete picture of how users move through your app.
+
+## Simple event
+
+Call `pushEvent` with an event name to record an action with no additional data.
+
+<CodeGroup>
+
+```java Java
+CleverTapAPI clevertap = CleverTapAPI.getDefaultInstance(getApplicationContext());
+clevertap.pushEvent("Event Name");
+```
+
+```kotlin Kotlin
+val clevertap = CleverTapAPI.getDefaultInstance(applicationContext)
+clevertap?.pushEvent("Event Name")
+```
+
+</CodeGroup>
+
+## Event with properties
+
+Attach a `HashMap<String, Object>` to provide context about the event. Property values can be strings, numbers, booleans, or `java.util.Date` objects.
+
+<CodeGroup>
+
+```java Java
+HashMap<String, Object> prodViewedAction = new HashMap<String, Object>();
+prodViewedAction.put("Product Name", "Casio Chronograph Watch");
+prodViewedAction.put("Category", "Mens Accessories");
+prodViewedAction.put("Price", 59.99);
+prodViewedAction.put("Date", new java.util.Date());
+
+clevertap.pushEvent("Product viewed", prodViewedAction);
+```
+
+```kotlin Kotlin
+val prodViewedAction = HashMap<String, Any>()
+prodViewedAction["Product Name"] = "Casio Chronograph Watch"
+prodViewedAction["Category"] = "Mens Accessories"
+prodViewedAction["Price"] = 59.99
+prodViewedAction["Date"] = java.util.Date()
+
+clevertap?.pushEvent("Product viewed", prodViewedAction)
+```
+
+</CodeGroup>
+
+## Charged event (purchase)
+
+Use `pushChargedEvent` to record a purchase. Pass a `HashMap` of order-level details and an `ArrayList` of item-level `HashMap` objects.
+
+<CodeGroup>
+
+```java Java
+HashMap<String, Object> chargeDetails = new HashMap<String, Object>();
+chargeDetails.put("Amount", 300);
+chargeDetails.put("Payment Mode", "Credit card");
+chargeDetails.put("Charged ID", 24052013);
+
+HashMap<String, Object> item1 = new HashMap<String, Object>();
+item1.put("Product category", "books");
+item1.put("Book name", "The Millionaire next door");
+item1.put("Quantity", 1);
+
+HashMap<String, Object> item2 = new HashMap<String, Object>();
+item2.put("Product category", "books");
+item2.put("Book name", "Achieving inner zen");
+item2.put("Quantity", 1);
+
+HashMap<String, Object> item3 = new HashMap<String, Object>();
+item3.put("Product category", "books");
+item3.put("Book name", "Chuck it, let's do it");
+item3.put("Quantity", 5);
+
+ArrayList<HashMap<String, Object>> items = new ArrayList<HashMap<String, Object>>();
+items.add(item1);
+items.add(item2);
+items.add(item3);
+
+clevertap.pushChargedEvent(chargeDetails, items);
+```
+
+```kotlin Kotlin
+val chargeDetails = HashMap<String, Any>()
+chargeDetails["Amount"] = 300
+chargeDetails["Payment Mode"] = "Credit card"
+chargeDetails["Charged ID"] = 24052013
+
+val item1 = HashMap<String, Any>()
+item1["Product category"] = "books"
+item1["Book name"] = "The Millionaire next door"
+item1["Quantity"] = 1
+
+val item2 = HashMap<String, Any>()
+item2["Product category"] = "books"
+item2["Book name"] = "Achieving inner zen"
+item2["Quantity"] = 1
+
+val item3 = HashMap<String, Any>()
+item3["Product category"] = "books"
+item3["Book name"] = "Chuck it, let's do it"
+item3["Quantity"] = 5
+
+val items = ArrayList<HashMap<String, Any>>()
+items.add(item1)
+items.add(item2)
+items.add(item3)
+
+clevertap?.pushChargedEvent(chargeDetails, items)
+```
+
+</CodeGroup>
+
+<Tip>
+Use consistent, human-readable event names in sentence case (for example, "Product viewed" rather than "product_viewed" or "ProductViewed"). CleverTap treats event names as case-sensitive, so "Product viewed" and "Product Viewed" are recorded as two separate events.
+</Tip>
+
+## Query event history
+
+The SDK provides APIs to retrieve event history for the current user directly from the device.
+
+<CodeGroup>
+
+```java Java
+// Get details for a specific event
+UserEventLog eventLog = clevertap.getUserEventLog("Product Viewed");
+if (eventLog != null) {
+    String eventName = eventLog.getEventName();
+    long firstTime = eventLog.getFirstTs();
+    long lastTime = eventLog.getLastTs();
+    int count = eventLog.getCountOfEvents();
+    String deviceId = eventLog.getDeviceID();
+}
+
+// Get total occurrence count
+int eventCount = clevertap.getUserEventLogCount("Product Viewed");
+
+// Get full event history
+Map<String, UserEventLog> eventHistory = clevertap.getUserEventLogHistory();
+for (Map.Entry<String, UserEventLog> entry : eventHistory.entrySet()) {
+    String name = entry.getKey();
+    UserEventLog log = entry.getValue();
+    // process log
+}
+
+// Get user's last app visit timestamp
+long lastVisitTs = clevertap.getUserLastVisitTs();
+
+// Get total number of app launches
+int appLaunchCount = clevertap.getUserAppLaunchCount();
+```
+
+```kotlin Kotlin
+// Get details for a specific event
+clevertap.getUserEventLog("Product Viewed")?.let { eventLog ->
+    val eventName = eventLog.eventName
+    val firstTime = eventLog.firstTs
+    val lastTime = eventLog.lastTs
+    val count = eventLog.countOfEvents
+    val deviceId = eventLog.deviceID
+} ?: println("Event not performed")
+
+// Get total occurrence count
+val eventCount = clevertap.getUserEventLogCount("Product Viewed")
+
+// Get full event history
+val eventHistory = clevertap.userEventLogHistory
+eventHistory?.forEach { (eventName, log) ->
+    // process log
+} ?: println("Events not performed")
+
+// Get user's last app visit timestamp
+val lastVisitTs = clevertap.userLastVisitTs
+
+// Get total number of app launches
+val appLaunchCount = clevertap?.userAppLaunchCount
+```
+
+</CodeGroup>

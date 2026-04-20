@@ -1,0 +1,452 @@
+---
+title: "Remote Variables API reference for CleverTap"
+description: "Complete reference for CleverTap Android SDK methods to define, fetch, sync, and observe remote variables, including the Var<T> class and change callbacks."
+---
+
+Remote Variables let you define typed values in your app that the CleverTap dashboard can override at runtime without a new release. After defining variables in code, you fetch updated values from the server, observe change callbacks, and read values through the `Var<T>` API. The SDK supports primitive types, `String`, and file references.
+
+## Defining variables
+
+Variables can be defined imperatively with `defineVariable()`, or declaratively by annotating class fields with `@Variable` and then parsing those classes.
+
+### `defineVariable(String name, T defaultValue)`
+
+Defines and registers a remote variable with a name and a default value. Returns a `Var<T>` instance tied to this CleverTap instance. Supported types for `T` are `Byte`, `Short`, `Integer`, `Long`, `Float`, `Double`, `String`, and `Boolean`.
+
+<CodeGroup>
+```java Java
+Var<Byte>    var1 = cleverTap.defineVariable("var_byte",    (byte) 1);
+Var<Short>   var2 = cleverTap.defineVariable("var_short",   (short) 2);
+Var<Integer> var3 = cleverTap.defineVariable("var_int",     3);
+Var<Long>    var4 = cleverTap.defineVariable("var_long",    4L);
+Var<Float>   var5 = cleverTap.defineVariable("var_float",   5F);
+Var<Double>  var6 = cleverTap.defineVariable("var_double",  6.0);
+Var<String>  var7 = cleverTap.defineVariable("var_string",  "str");
+Var<Boolean> var8 = cleverTap.defineVariable("var_boolean", true);
+```
+```kotlin Kotlin
+val var1: Var<Byte>    = cleverTap.defineVariable("var_byte",    1)
+val var2: Var<Short>   = cleverTap.defineVariable("var_short",   2)
+val var3: Var<Int>     = cleverTap.defineVariable("var_int",     3)
+val var4: Var<Long>    = cleverTap.defineVariable("var_long",    4L)
+val var5: Var<Float>   = cleverTap.defineVariable("var_float",   5F)
+val var6: Var<Double>  = cleverTap.defineVariable("var_double",  6.0)
+val var7: Var<String>  = cleverTap.defineVariable("var_string",  "str")
+val var8: Var<Boolean> = cleverTap.defineVariable("var_boolean", true)
+```
+</CodeGroup>
+
+<ParamField path="name" type="String" required>
+  The unique name of the variable as it appears in the CleverTap dashboard.
+</ParamField>
+
+<ParamField path="defaultValue" type="T" required>
+  The default value used when no server value is available. Determines the variable's type.
+</ParamField>
+
+---
+
+### `defineFileVariable(String name)`
+
+Defines a file variable. The value is a `String` path to the locally downloaded file. Supported file types include images (jpg, jpeg, png, gif), text files, and PDFs. Available from SDK v7.0.0 and above.
+
+<Warning>
+  The `@Variable` annotation is not supported for file variables. You must use `defineFileVariable()`.
+</Warning>
+
+<CodeGroup>
+```java Java
+Var<String> fileVar = cleverTap.defineFileVariable("var_file");
+```
+```kotlin Kotlin
+val fileVar: Var<String> = cleverTap.defineFileVariable("var_file")
+```
+</CodeGroup>
+
+<ParamField path="name" type="String" required>
+  The unique name of the file variable as it appears in the CleverTap dashboard.
+</ParamField>
+
+---
+
+### `parseVariables(Object... instances)`
+
+Scans the provided object instances for public fields annotated with `@Variable` and registers those fields as remote variables. Use this for instance-level annotations.
+
+<CodeGroup>
+```java Java
+MyClass instance = new MyClass();
+cleverTap.parseVariables(instance);
+```
+</CodeGroup>
+
+<ParamField path="instances" type="Object..." required>
+  One or more object instances whose public `@Variable`-annotated fields should be registered.
+</ParamField>
+
+<Warning>
+  Add a Proguard rule to keep classes using `@Variable` annotations, otherwise field name changes during minification cause runtime errors:
+
+  ```groovy
+  -keep class com.yourpackage.MyClass { *; }
+  ```
+
+  The `@Variable` annotation is not yet supported in Kotlin. Use `defineVariable()` in Kotlin code.
+</Warning>
+
+---
+
+### `parseVariablesForClasses(Class<?>... classes)`
+
+Scans the provided classes for public **static** fields annotated with `@Variable` and registers them as remote variables. Use this for static annotation-based definitions.
+
+<CodeGroup>
+```java Java
+cleverTap.parseVariablesForClasses(MyClass.class);
+```
+</CodeGroup>
+
+<ParamField path="classes" type="Class<?>..." required>
+  One or more classes whose public static `@Variable`-annotated fields should be registered.
+</ParamField>
+
+---
+
+## Fetching from server
+
+### `fetchVariables()`
+
+Triggers a network request to fetch the latest variable values from the CleverTap server. If values have changed, the appropriate change callbacks are fired. This overload takes no callback.
+
+<CodeGroup>
+```java Java
+cleverTap.fetchVariables();
+```
+```kotlin Kotlin
+cleverTap.fetchVariables()
+```
+</CodeGroup>
+
+---
+
+### `fetchVariables(FetchVariablesCallback callback)`
+
+Fetches variable values from the server and invokes `callback` when the request completes, regardless of whether values changed. The `boolean` argument indicates whether the request succeeded.
+
+<Note>
+  Only one `FetchVariablesCallback` is active at a time. Subsequent calls to `fetchVariables(callback)` replace the previously registered callback; only the most recent one is invoked.
+</Note>
+
+<CodeGroup>
+```java Java
+cleverTap.fetchVariables(new FetchVariablesCallback() {
+    @Override
+    public void onVariablesFetched(boolean isSuccess) {
+        // isSuccess is true when the server request succeeded
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.fetchVariables { isSuccess ->
+    // isSuccess is true when the server request succeeded
+}
+```
+</CodeGroup>
+
+<ParamField path="callback" type="FetchVariablesCallback">
+  Receives a single `onVariablesFetched(boolean isSuccess)` call after the network request completes.
+</ParamField>
+
+---
+
+## Syncing to dashboard
+
+### `syncVariables()`
+
+Uploads all currently defined variables to the CleverTap dashboard so they can be configured in a draft. This method is intended for use during development only.
+
+<Warning>
+  `syncVariables()` only works when:
+  1. The app is running in **DEBUG** mode.
+  2. The active CleverTap user profile has been marked as a **Test Profile** in the dashboard.
+
+  If another user has an unpublished draft on the dashboard, the sync call will fail to prevent overwriting it. Publish or dismiss the existing draft before syncing again.
+</Warning>
+
+<CodeGroup>
+```java Java
+cleverTap.syncVariables();
+```
+```kotlin Kotlin
+cleverTap.syncVariables()
+```
+</CodeGroup>
+
+---
+
+## Change callbacks
+
+These methods register global callbacks on the CleverTap instance that fire when variable values are initialized or updated.
+
+### `addVariablesChangedCallback(VariablesChangedCallback callback)`
+
+Registers a callback that is called on every app start and whenever new variable values are fetched from the server.
+
+<CodeGroup>
+```java Java
+cleverTap.addVariablesChangedCallback(new VariablesChangedCallback() {
+    @Override
+    public void variablesChanged() {
+        // Called on app start and on every server fetch
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.addVariablesChangedCallback(object : VariablesChangedCallback() {
+    override fun variablesChanged() {
+        // Called on app start and on every server fetch
+    }
+})
+```
+</CodeGroup>
+
+<ParamField path="callback" type="VariablesChangedCallback" required>
+  The callback to invoke each time variables are initialized or updated.
+</ParamField>
+
+---
+
+### `addOneTimeVariablesChangedCallback(VariablesChangedCallback callback)`
+
+Registers a callback that fires only once: on the next app start, or immediately if server values have already been received.
+
+<CodeGroup>
+```java Java
+cleverTap.addOneTimeVariablesChangedCallback(new VariablesChangedCallback() {
+    @Override
+    public void variablesChanged() {
+        // Called once, then automatically removed
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.addOneTimeVariablesChangedCallback(object : VariablesChangedCallback() {
+    override fun variablesChanged() {
+        // Called once, then automatically removed
+    }
+})
+```
+</CodeGroup>
+
+<ParamField path="callback" type="VariablesChangedCallback" required>
+  The callback to invoke one time when variables are first initialized or updated.
+</ParamField>
+
+---
+
+### `removeVariablesChangedCallback(VariablesChangedCallback callback)`
+
+Unregisters a previously added repeating variables-changed callback.
+
+<ParamField path="callback" type="VariablesChangedCallback" required>
+  The callback instance to remove. Must be the same object reference that was passed to `addVariablesChangedCallback`.
+</ParamField>
+
+---
+
+### `removeOneTimeVariablesChangedCallback(VariablesChangedCallback callback)`
+
+Unregisters a previously added one-time variables-changed callback before it fires.
+
+<ParamField path="callback" type="VariablesChangedCallback" required>
+  The callback instance to remove.
+</ParamField>
+
+---
+
+### `removeAllVariablesChangedCallbacks()`
+
+Removes all repeating `VariablesChangedCallback` instances registered via `addVariablesChangedCallback`.
+
+<CodeGroup>
+```java Java
+cleverTap.removeAllVariablesChangedCallbacks();
+```
+```kotlin Kotlin
+cleverTap.removeAllVariablesChangedCallbacks()
+```
+</CodeGroup>
+
+---
+
+### `removeAllOneTimeVariablesChangedCallbacks()`
+
+Removes all pending one-time `VariablesChangedCallback` instances registered via `addOneTimeVariablesChangedCallback`.
+
+<CodeGroup>
+```java Java
+cleverTap.removeAllOneTimeVariablesChangedCallbacks();
+```
+```kotlin Kotlin
+cleverTap.removeAllOneTimeVariablesChangedCallbacks()
+```
+</CodeGroup>
+
+---
+
+### `onVariablesChangedAndNoDownloadsPending(VariablesChangedCallback callback)`
+
+Registers a repeating callback that fires each time new variable values are fetched **and** all file downloads associated with file variables have completed.
+
+<CodeGroup>
+```java Java
+cleverTap.onVariablesChangedAndNoDownloadsPending(new VariablesChangedCallback() {
+    @Override
+    public void variablesChanged() {
+        // Called each time values are fetched and all file downloads are done
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.onVariablesChangedAndNoDownloadsPending(object : VariablesChangedCallback() {
+    override fun variablesChanged() {
+        // Called each time values are fetched and all file downloads are done
+    }
+})
+```
+</CodeGroup>
+
+<ParamField path="callback" type="VariablesChangedCallback" required>
+  The callback to invoke each time variables are updated and all pending file downloads are complete.
+</ParamField>
+
+---
+
+### `onceVariablesChangedAndNoDownloadsPending(VariablesChangedCallback callback)`
+
+Registers a one-time callback that fires when new variable values are fetched and all file downloads have completed. Fires only once.
+
+<CodeGroup>
+```java Java
+cleverTap.onceVariablesChangedAndNoDownloadsPending(new VariablesChangedCallback() {
+    @Override
+    public void variablesChanged() {
+        // Called once when values are fetched and all file downloads are done
+    }
+});
+```
+```kotlin Kotlin
+cleverTap.onceVariablesChangedAndNoDownloadsPending(object : VariablesChangedCallback() {
+    override fun variablesChanged() {
+        // Called once when values are fetched and all file downloads are done
+    }
+})
+```
+</CodeGroup>
+
+<ParamField path="callback" type="VariablesChangedCallback" required>
+  The callback to invoke one time after all variable values and file downloads are ready.
+</ParamField>
+
+---
+
+## `Var<T>` class
+
+Each call to `defineVariable()` or `defineFileVariable()` returns a `Var<T>` instance. Use its methods to read the current or default value and to subscribe to per-variable change events.
+
+### Reading values
+
+| Method | Return type | Description |
+|---|---|---|
+| `value()` | `T` | The current server-overridden value, or the default if no server value has been received. |
+| `defaultValue()` | `T` | The value provided when the variable was defined. |
+| `numberValue()` | `Number` | The current value cast to `Number`. Applicable to numeric types only. |
+| `stringValue()` | `String` | The current value converted to a `String`. |
+
+<CodeGroup>
+```java Java
+variable.defaultValue(); // returns default value
+variable.value();        // returns current value
+variable.numberValue();  // returns value as Number (numeric types)
+variable.stringValue();  // returns value as String
+```
+```kotlin Kotlin
+variable.defaultValue() // returns default value
+variable.value()        // returns current value
+variable.numberValue()  // returns value as Number (numeric types)
+variable.stringValue()  // returns value as String
+```
+</CodeGroup>
+
+---
+
+### `addValueChangedCallback(VariableCallback<T> callback)`
+
+Registers a per-variable callback invoked on app start and whenever the variable's value changes.
+
+<CodeGroup>
+```java Java
+Var<Integer> variable = cleverTap.defineVariable("var_int", 1);
+variable.addValueChangedCallback(new VariableCallback<Integer>() {
+    @Override
+    public void onValueChanged(Var<Integer> varInstance) {
+        // Called on app start and on each value change
+    }
+});
+```
+```kotlin Kotlin
+val variable: Var<Int> = cleverTap.defineVariable("var_int", 1)
+variable.addValueChangedCallback(object : VariableCallback<Int>() {
+    override fun onValueChanged(varInstance: Var<Int>) {
+        // Called on app start and on each value change
+    }
+})
+```
+</CodeGroup>
+
+---
+
+### `addFileReadyHandler(VariableCallback<String> callback)`
+
+For file variables only. Registers a callback invoked when the file associated with this variable has been downloaded and is ready to use. The `Var` instance passed to `onValueChanged` contains the local file path.
+
+<CodeGroup>
+```java Java
+Var<String> fileVar = cleverTap.defineFileVariable("var_file");
+fileVar.addFileReadyHandler(new VariableCallback<String>() {
+    @Override
+    public void onValueChanged(Var<String> variable) {
+        // File is downloaded; use variable.value() to get the local path
+    }
+});
+```
+```kotlin Kotlin
+val fileVar: Var<String> = cleverTap.defineFileVariable("var_file")
+fileVar.addFileReadyHandler(object : VariableCallback<String>() {
+    override fun onValueChanged(variable: Var<String>) {
+        // File is downloaded; use variable.value() to get the local path
+    }
+})
+```
+</CodeGroup>
+
+---
+
+## Reading by name
+
+### `getVariableValue(String name)`
+
+Returns the current value of a named variable as an `Object`. Returns `null` if no variable with that name has been defined.
+
+<CodeGroup>
+```java Java
+Object value = cleverTap.getVariableValue("variable name");
+```
+```kotlin Kotlin
+val value = cleverTap.getVariableValue("variable name")
+```
+</CodeGroup>
+
+<ParamField path="name" type="String" required>
+  The variable name as originally passed to `defineVariable()`.
+</ParamField>

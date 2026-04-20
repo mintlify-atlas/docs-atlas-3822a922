@@ -1,0 +1,300 @@
+---
+title: "Geofence API reference for CleverTap"
+description: "Reference for CTGeofenceAPI initialization, CTGeofenceSettings.Builder options, event listeners, and GeofenceCallback for the CleverTap Android SDK."
+---
+
+The CleverTap Geofence SDK wraps the Play Services Location library to deliver geofence entry and exit events as CleverTap analytics events. It exposes a single singleton, `CTGeofenceAPI`, that you configure with a `CTGeofenceSettings` object and a `CleverTapAPI` instance. Once initialized, the SDK monitors the configured number of geofences and raises "Geofence Cluster Entered" and "Geofence Cluster Exited" events automatically.
+
+<Note>
+  `CleverTapAPI` must be initialized before `CTGeofenceAPI`. Runtime location permissions must be granted before calling `init()`.
+</Note>
+
+---
+
+## CTGeofenceAPI
+
+### `getInstance(Context context)`
+
+Returns the singleton `CTGeofenceAPI` instance. Always use the application context.
+
+```java
+CTGeofenceAPI api = CTGeofenceAPI.getInstance(getApplicationContext());
+```
+
+<ParamField path="context" type="Context" required>
+  The Android `Context`. Use `getApplicationContext()` to avoid leaking an `Activity`.
+</ParamField>
+
+---
+
+### `init(CTGeofenceSettings settings, CleverTapAPI cleverTapAPI)`
+
+Initializes the Geofence SDK. Registers background location updates according to the provided settings and begins monitoring geofences. The SDK is automatically activated once `init()` returns successfully.
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext()).init(ctGeofenceSettings, cleverTapAPI);
+```
+
+<ParamField path="settings" type="CTGeofenceSettings" required>
+  A settings object built with `CTGeofenceSettings.Builder`. Controls location accuracy, fetch mode, monitoring count, and more.
+</ParamField>
+
+<ParamField path="cleverTapAPI" type="CleverTapAPI" required>
+  A fully initialized `CleverTapAPI` instance used to send geofence events to CleverTap.
+</ParamField>
+
+---
+
+### `triggerLocation()`
+
+Fetches the last known location from the OS and delivers it to the app via `CTLocationUpdatesListener`. The returned location may be `null` if the OS has no cached location. Throws `IllegalStateException` if called before `init()`.
+
+```java
+try {
+    CTGeofenceAPI.getInstance(getApplicationContext()).triggerLocation();
+} catch (IllegalStateException e) {
+    // Called before geofence SDK was initialized
+}
+```
+
+---
+
+### `deactivate()`
+
+Stops all geofence monitoring and removes all registered callbacks and listeners.
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext()).deactivate();
+```
+
+<Warning>
+  Calling `deactivate()` removes all callbacks and listeners. You must re-register them if you initialize the SDK again.
+</Warning>
+
+---
+
+## CTGeofenceSettings.Builder
+
+Build a `CTGeofenceSettings` instance by chaining calls on `CTGeofenceSettings.Builder` and calling `build()`.
+
+```java
+CTGeofenceSettings settings = new CTGeofenceSettings.Builder()
+    .enableBackgroundLocationUpdates(true)
+    .setLogLevel(Logger.DEBUG)
+    .setLocationAccuracy(CTGeofenceSettings.ACCURACY_HIGH)
+    .setLocationFetchMode(CTGeofenceSettings.FETCH_LAST_LOCATION_PERIODIC)
+    .setGeofenceMonitoringCount(50)
+    .setInterval(1800000L)
+    .setFastestInterval(1800000L)
+    .setSmallestDisplacement(200f)
+    .setGeofenceNotificationResponsiveness(0)
+    .build();
+```
+
+---
+
+### `enableBackgroundLocationUpdates(boolean backgroundLocationUpdates)`
+
+Controls whether the SDK registers background location updates.
+
+- `true` (default) — registers background location updates through the configured fetch mode.
+- `false` — fetches location only when the app is in the foreground or when `triggerLocation()` is called explicitly.
+
+<ParamField path="backgroundLocationUpdates" type="boolean">
+  Enable or disable background location updates. Default: `true`.
+</ParamField>
+
+---
+
+### `setLogLevel(int logLevel)`
+
+Sets the verbosity of the Geofence SDK's internal logs.
+
+<ParamField path="logLevel" type="int">
+  One of the `Logger` constants below. Default: `Logger.DEBUG`.
+</ParamField>
+
+| Constant | Value | Description |
+|---|---|---|
+| `Logger.OFF` | — | No logs. |
+| `Logger.INFO` | — | Informational messages only. |
+| `Logger.DEBUG` | — | Debug-level messages (default). |
+| `Logger.VERBOSE` | — | All messages including verbose output. |
+
+---
+
+### `setLocationAccuracy(byte locationAccuracy)`
+
+Sets the desired location accuracy. Applicable only when using `FETCH_CURRENT_LOCATION_PERIODIC`.
+
+<ParamField path="locationAccuracy" type="byte">
+  One of the accuracy constants below. Default: `CTGeofenceSettings.ACCURACY_HIGH`.
+</ParamField>
+
+| Constant | Value | Description |
+|---|---|---|
+| `CTGeofenceSettings.ACCURACY_HIGH` | `1` | Maximum accuracy using GPS, Wi-Fi, and cell. May cause higher battery drain. |
+| `CTGeofenceSettings.ACCURACY_MEDIUM` | `2` | Accurate location optimized for power. Rarely uses GPS; relies on Wi-Fi and cell. |
+| `CTGeofenceSettings.ACCURACY_LOW` | `3` | City-level accuracy using cell towers only. Minimal battery drain. |
+
+---
+
+### `setLocationFetchMode(byte locationFetchMode)`
+
+Selects the strategy used to obtain the device's location periodically.
+
+<ParamField path="locationFetchMode" type="byte">
+  One of the fetch mode constants below. Default: `CTGeofenceSettings.FETCH_LAST_LOCATION_PERIODIC`.
+</ParamField>
+
+| Constant | Value | Description |
+|---|---|---|
+| `CTGeofenceSettings.FETCH_CURRENT_LOCATION_PERIODIC` | `1` | Uses a `BroadcastReceiver` to actively fetch the current device location on the configured interval. Accuracy and battery usage vary with accuracy and interval settings. |
+| `CTGeofenceSettings.FETCH_LAST_LOCATION_PERIODIC` | `2` | Uses `WorkManager` to retrieve the last known location from the OS. More battery-efficient but may return `null` if location services were off. |
+
+---
+
+### `setInterval(long interval)`
+
+Sets the desired interval between active location updates in milliseconds. Values less than 30 minutes (1 800 000 ms) are silently raised to that minimum.
+
+- For `FETCH_CURRENT_LOCATION_PERIODIC`: the interval is inexact and may vary depending on other apps requesting location.
+- For `FETCH_LAST_LOCATION_PERIODIC`: the interval is managed by `WorkManager`.
+
+<ParamField path="interval" type="long">
+  Interval in milliseconds. Default and minimum: 30 minutes (1 800 000 ms).
+</ParamField>
+
+---
+
+### `setFastestInterval(long fastestInterval)`
+
+Sets the fastest rate at which the app can receive location updates in milliseconds. Applicable only for `FETCH_CURRENT_LOCATION_PERIODIC`. Values less than 30 minutes are silently raised to that minimum. Unlike `setInterval`, this value is exact — the app never receives updates faster than this rate.
+
+<ParamField path="fastestInterval" type="long">
+  Fastest interval in milliseconds. Default and minimum: 30 minutes (1 800 000 ms).
+</ParamField>
+
+---
+
+### `setSmallestDisplacement(float smallestDisplacement)`
+
+Sets the minimum distance the device must move before a new location update is delivered, in meters. Applicable only for `FETCH_CURRENT_LOCATION_PERIODIC`. Values less than 200 meters are silently raised to that minimum.
+
+<ParamField path="smallestDisplacement" type="float">
+  Minimum displacement in meters. Default and minimum: 200 meters.
+</ParamField>
+
+---
+
+### `setGeofenceMonitoringCount(int geofenceMonitoringCount)`
+
+Sets the maximum number of geofences the SDK monitors simultaneously. Must be between 1 and 100.
+
+<ParamField path="geofenceMonitoringCount" type="int">
+  Number of geofences to monitor. Default: `50`. Valid range: `1`–`100`.
+</ParamField>
+
+---
+
+### `setGeofenceNotificationResponsiveness(int geofenceNotificationResponsiveness)`
+
+Sets the best-effort responsiveness for geofence transition alerts, in milliseconds. A higher value (for example, 5 minutes = 300 000 ms) batches transition checks less frequently, reducing battery use. A value of `0` instructs the OS to deliver alerts as quickly as possible.
+
+<ParamField path="geofenceNotificationResponsiveness" type="int">
+  Responsiveness in milliseconds. Default: `0`.
+</ParamField>
+
+---
+
+## Callbacks and listeners
+
+`CTGeofenceAPI` exposes three listener interfaces. All callbacks are delivered on the main thread.
+
+### OnGeofenceApiInitializedListener
+
+Notifies the app that `CTGeofenceAPI` has finished initializing. Register this listener before calling `init()` to be sure the callback is not missed.
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext())
+    .setOnGeofenceApiInitializedListener(new CTGeofenceAPI.OnGeofenceApiInitializedListener() {
+        @Override
+        public void OnGeofenceApiInitialized() {
+            // CTGeofenceAPI is ready
+        }
+    });
+```
+
+---
+
+### CTGeofenceEventsListener
+
+Delivers geofence entry and exit events to the app. Each callback receives a `JSONObject` describing the triggering geofence.
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext())
+    .setCtGeofenceEventsListener(new CTGeofenceEventsListener() {
+        @Override
+        public void onGeofenceEnteredEvent(JSONObject jsonObject) {
+            // User entered a geofence cluster
+        }
+
+        @Override
+        public void onGeofenceExitedEvent(JSONObject jsonObject) {
+            // User exited a geofence cluster
+        }
+    });
+```
+
+The `JSONObject` passed to both callbacks has the following structure:
+
+```json
+{
+  "id":            500043,
+  "gcId":          1,
+  "gcName":        "geofenceClusterName",
+  "lat":           19.229493674459807,
+  "lng":           72.82329440116882,
+  "r":             200,
+  "triggered_lat": 19.229493674459807,
+  "triggered_lng": 72.82329440116882
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `int` | Unique identifier of the geofence. |
+| `gcId` | `int` | Geofence cluster ID. |
+| `gcName` | `String` | Human-readable name of the geofence cluster. |
+| `lat` | `double` | Latitude of the geofence center. |
+| `lng` | `double` | Longitude of the geofence center. |
+| `r` | `int` | Radius of the geofence in meters. |
+| `triggered_lat` | `double` | Latitude where the device triggered the transition. |
+| `triggered_lng` | `double` | Longitude where the device triggered the transition. |
+
+---
+
+### CTLocationUpdatesListener
+
+Delivers raw `Location` objects from the Android OS whenever the SDK receives a location update.
+
+```java
+CTGeofenceAPI.getInstance(getApplicationContext())
+    .setCtLocationUpdatesListener(new CTLocationUpdatesListener() {
+        @Override
+        public void onLocationUpdates(Location location) {
+            // New location from the Android OS
+        }
+    });
+```
+
+---
+
+## GeofenceCallback (internal bridge)
+
+`GeofenceCallback` is an internal SDK interface used to bridge the Geofence SDK with the core CleverTap SDK. It is registered via `CleverTapAPI#setGeofenceCallback(GeofenceCallback)` and should be implemented only by the Geofence SDK itself — not by application code.
+
+| Method | Description |
+|---|---|
+| `handleGeoFences(JSONObject jsonObject)` | Called by the core SDK to deliver geofence configuration data to the Geofence SDK. |
+| `triggerLocation()` | Called by the core SDK to request an immediate location fetch. |

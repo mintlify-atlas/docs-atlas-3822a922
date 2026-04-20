@@ -1,0 +1,81 @@
+---
+title: "Rich push notification templates for Android"
+description: "Install the CleverTap Push Templates SDK and use carousel, rating, timer, and other rich notification templates to boost Android push engagement."
+---
+
+The CleverTap Push Templates SDK provides a collection of rich notification layouts for Android that go beyond the standard title-and-message format. Templates include auto-rotating and manual image carousels, star-rating prompts, live countdown timers, product catalog displays, five-icon shortcuts, zero-bezel full-bleed images, and an input box for collecting user responses. All templates are configured from the CleverTap dashboard using key-value pairs — no separate release is needed to change template content.
+
+## Installation
+
+<Steps>
+  <Step title="Add dependencies">
+    Add the Push Templates SDK and the CleverTap Android SDK to your module-level `build.gradle`:
+
+    ```groovy
+    implementation "com.clevertap.android:push-templates:2.4.0"
+    implementation "com.clevertap.android:clevertap-android-sdk:8.1.0" // 4.4.0 and above
+    ```
+  </Step>
+
+  <Step title="Configure notification handling">
+    Choose one of the two setup approaches below depending on whether you have a custom `FirebaseMessagingService`.
+
+    **Option 1 — Out-of-box setup**
+
+    If you are not using a custom Firebase messaging service, register the `PushTemplateNotificationHandler` in your `Application` class before `onCreate()`:
+
+    <CodeGroup>
+
+    ```kotlin Kotlin
+    CleverTapAPI.setNotificationHandler(PushTemplateNotificationHandler() as NotificationHandler)
+    ```
+
+    ```java Java
+    CleverTapAPI.setNotificationHandler((NotificationHandler) new PushTemplateNotificationHandler());
+    ```
+
+    </CodeGroup>
+
+    **Option 2 — Custom `FirebaseMessagingService`**
+
+    If you already have a custom service, delegate to `CTFcmMessageHandler` inside `onMessageReceived`:
+
+    ```java
+    public class PushTemplateMessagingService extends FirebaseMessagingService {
+        @Override
+        public void onMessageReceived(RemoteMessage remoteMessage) {
+            CTFcmMessageHandler()
+                .createNotification(getApplicationContext(), remoteMessage);
+        }
+
+        @Override
+        public void onNewToken(@NonNull final String s) {
+            // no-op
+        }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Available template types
+
+| Template | Description |
+|---|---|
+| **Basic** | Standard push with optional large image, GIF, background color, and deep link. |
+| **Auto Carousel** | Images rotate automatically in a loop. |
+| **Manual Carousel** | User navigates between images with arrow buttons. Falls back to Basic if fewer than two images download. Includes a filmstrip variant. |
+| **Rating** | Displays a star-rating prompt. Feedback is captured in the "Rating Submitted" event with the property `wzrk_c2a`. |
+| **Product Catalog** | Showcases multiple product images with a "BUY NOW" CTA. Available in vertical and linear view variants. |
+| **Five Icons** | Five icon CTAs with no text. Requires at least three icons to render; each tap is captured in the "Notification Clicked" event with `wzrk_c2a`. |
+| **Timer** | Live countdown timer. Supports different title, message, and background image after the timer expires. Requires Android O (API 26) or above; falls back to Basic on older versions. |
+| **Zero Bezel** | Background image covers the entire notification surface with text overlaid. Falls back to Basic if the image cannot be downloaded. |
+| **Input Box** | Collects user input via reply button. Supports four variants: CTAs, CTAs with Remind Later, Reply as Event, and Reply as Intent. |
+
+## Dashboard usage
+
+Configure push template campaigns from the CleverTap dashboard:
+
+1. In the **WHAT** section, fill in **Title** and **Message** (these are used as fallbacks if the key-value pairs also define them).
+2. Click **Advanced**, then **Add pair** to add the template key-value pairs. The `pt_id` key identifies which template to render (for example, `pt_basic`, `pt_carousel`).
+3. Alternatively, combine all keys into a single JSON object and pass it using the `pt_json` key.
+4. Send a test push to verify rendering, then schedule the campaign.

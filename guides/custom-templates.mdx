@@ -1,0 +1,179 @@
+---
+title: "Custom code templates for in-app messages"
+description: "Create, register, and present custom in-app template and function types using the CleverTap Android SDK's custom code templates API."
+---
+
+Custom code templates extend CleverTap in-app messaging with your own presentation logic. Instead of using CleverTap's built-in layouts, you define templates in code, configure their arguments from the dashboard, and write the rendering logic yourself. This is useful for branded overlays, custom onboarding flows, or any UI that standard in-app formats cannot express. The feature is available in Android SDK 7.0.0 and above.
+
+## Template types
+
+The SDK supports two template types:
+
+- **Templates** — can contain action arguments (such as "close" or "open URL") but cannot themselves be used as actions. Templates are always visual.
+- **Functions** — cannot contain action arguments but can be used as actions inside other templates. Functions can be declared visual or non-visual. Visual functions participate in the in-app queue and can display UI. Non-visual functions are triggered immediately and must not contain UI logic.
+
+## Creating templates and functions
+
+Every template has a name, a set of arguments, and a presenter. Names must be unique across the application. The builder validates your definition and throws `CustomTemplateException` for invalid configurations — these should not be caught, as invalid templates cannot be triggered correctly.
+
+### Argument types
+
+| Type | Description |
+|---|---|
+| Primitives | `Boolean`, `Byte`, `Short`, `Integer`, `Long`, `Float`, `Double`, `String` — each requires a default value |
+| Map | A `Map` of supported primitives, with keys as argument names |
+| File | Downloaded automatically when the template is triggered |
+| Action | Links to a function template or a built-in action such as "close" or "open url" |
+
+#### Hierarchical arguments
+
+You can group arguments using a map argument or by using dot notation in the argument name. The following two definitions are equivalent:
+
+```kotlin
+mapArgument(
+    name = "map",
+    value = mapOf(
+        "a" to 5,
+        "b" to 6
+    )
+)
+```
+
+```kotlin
+builder.intArgument("map.a", 5)
+builder.intArgument("map.b", 6)
+```
+
+File and Action arguments can only be added to a group by using dot notation in their names.
+
+### Builder example
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    template {
+        name("template")
+        presenter(presenter)
+        stringArgument("string", "Default Text")
+        fileArgument("file")
+        intArgument("int", 0)
+    }
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    new CustomTemplate.TemplateBuilder()
+        .name("template")
+        .presenter(presenter)
+        .stringArgument("string", "Default Text")
+        .fileArgument("file")
+        .intArgument("int", 0)
+        .build();
+    ```
+  </Tab>
+</Tabs>
+
+## Registering templates
+
+<Note>
+Templates must be registered before the `CleverTapAPI` instance that uses them is created. A common place is `Application.onCreate()`.
+</Note>
+
+Register all templates and functions through `CleverTapAPI.registerCustomInAppTemplates()`, which accepts a `TemplatesProducer`.
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    CleverTapAPI.registerCustomInAppTemplates {
+        setOf(
+            template {
+                name("template")
+                presenter(templatePresenter)
+                stringArgument("string", "Text")
+            },
+            function(isVisual = true) {
+                name("function")
+                presenter(functionPresenter)
+                intArgument("int", 0)
+            }
+        )
+    }
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    CleverTapAPI.registerCustomInAppTemplates(ctConfig ->
+        CustomTemplatesExtKt.templatesSet(
+            new CustomTemplate.TemplateBuilder()
+                .name("template")
+                .presenter(templatePresenter)
+                .stringArgument("string", "Text")
+                .build(),
+            new CustomTemplate.FunctionBuilder(true)
+                .name("function")
+                .presenter(functionPresenter)
+                .intArgument("int", 0)
+                .build()
+        ));
+    ```
+  </Tab>
+</Tabs>
+
+### Registering for a specific instance
+
+If your application uses multiple `CleverTapAPI` instances, use `CleverTapInstanceConfig` to control which templates apply to which instance. Pass the config to `registerCustomInAppTemplates` — the `TemplatesProducer` receives it as a parameter so you can inspect it and return the appropriate set of templates.
+
+## Implementing a presenter
+
+When a template is triggered, the SDK calls its presenter. Presenters extend `TemplatePresenter` for templates or `FunctionPresenter` for functions. Both must implement `onPresent()`.
+
+```kotlin
+MyTemplatePresenter : TemplatePresenter {
+
+    override fun onPresent(context: TemplateContext) {
+        // Keep a reference to context as long as the template UI is visible,
+        // so you can call context.setDismissed() when the UI closes.
+        showUI(context)
+        context.setPresented()
+    }
+
+    override fun onClose(context: TemplateContext) {
+        // Called when a "close" action is triggered; remove your UI here
+        context.setDismissed()
+    }
+}
+```
+
+`TemplatePresenter` must also implement `onClose()`, which is invoked when a "close" action fires. Call `context.setDismissed()` inside `onClose()` to signal the SDK that the in-app is no longer visible and the next queued message can be shown.
+
+### Using the template context
+
+The `CustomTemplateContext` object passed to presenter methods lets you:
+
+- Read argument values with the appropriate `get*(String name)` methods.
+- Trigger action arguments by name with `CustomTemplateContext.triggerActionArgument()`.
+- Report state changes with `CustomTemplateContext.setPresented()` and `CustomTemplateContext.setDismissed()`.
+
+<Note>
+Only one visual template or in-app message is displayed at a time. The next queued message will not appear until `setDismissed()` is called on the current template context.
+</Note>
+
+## Triggering and dismissing templates
+
+Templates are triggered by the SDK when a matching in-app notification is next in the queue. The in-app queue is persisted across app launches to ensure all messages are eventually shown. Your presenter controls dismissal — call `context.setDismissed()` when the UI is no longer visible.
+
+## File arguments
+
+File arguments are downloaded automatically before the template is presented. Files are re-downloaded only when their value changes and are not already cached. If any file argument fails to download, the entire in-app is skipped and the template is not triggered.
+
+## Syncing templates to the dashboard
+
+After defining and registering your templates, sync them to the CleverTap dashboard so they can be used in campaigns.
+
+<Warning>
+`syncRegisteredInAppTemplates()` only works in debug builds with a user profile marked as a test profile. Remove this call from release builds.
+</Warning>
+
+```kotlin
+CleverTapAPI.syncRegisteredInAppTemplates(context)
+```

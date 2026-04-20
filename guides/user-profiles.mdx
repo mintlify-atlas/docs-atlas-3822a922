@@ -1,0 +1,264 @@
+---
+title: "Manage user profiles in CleverTap Android SDK"
+description: "Update profile properties, manage multi-value attributes, handle multiple users on one device, and control notification opt-in preferences."
+---
+
+CleverTap maintains a profile for each user that aggregates identity, demographic, and behavioral data. You can set standard properties recognized by the platform (such as name, email, and date of birth), create custom properties, manage multi-value lists, and control whether a user receives push, email, or SMS communications.
+
+## Update a user profile
+
+Call `pushProfile` with a `HashMap` of key-value pairs. All fields are optional, but including at least one identity field (`Identity`, `Email`, `FBID`, or `GPID`) lets CleverTap merge profiles across devices.
+
+<CodeGroup>
+
+```java Java
+HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
+profileUpdate.put("Name", "Jack Montana");                  // String
+profileUpdate.put("Identity", 61026032);                    // String or number
+profileUpdate.put("Email", "jack@gmail.com");               // Email address of the user
+profileUpdate.put("Phone", "+14155551234");                 // Phone (with the country code, starting with +)
+profileUpdate.put("Gender", "M");                           // Can be either M or F
+profileUpdate.put("Employed", "Y");                         // Can be either Y or N
+profileUpdate.put("Education", "Graduate");                 // Can be either Graduate, College or School
+profileUpdate.put("Married", "Y");                          // Can be either Y or N
+profileUpdate.put("DOB", new Date());                       // Date of Birth. Set the Date object to the appropriate value first
+profileUpdate.put("Age", 28);                               // Not required if DOB is set
+profileUpdate.put("Tz", "Asia/Kolkata");                    // An abbreviation such as "PST", a full name such as "America/Los_Angeles",
+                                                            // or a custom ID such as "GMT-8:00"
+profileUpdate.put("Photo", "www.foobar.com/image.jpeg");    // URL to the image
+
+// Controls whether the user will be sent email, push, or SMS
+profileUpdate.put("MSG-email", false);                      // Disable email notifications
+profileUpdate.put("MSG-push", true);                        // Enable push notifications
+profileUpdate.put("MSG-sms", false);                        // Disable SMS notifications
+
+ArrayList<String> stuff = new ArrayList<String>();
+stuff.add("bag");
+stuff.add("shoes");
+profileUpdate.put("MyStuff", stuff);                        // ArrayList of Strings
+
+String[] otherStuff = {"Jeans", "Perfume"};
+profileUpdate.put("MyStuff", otherStuff);                   // String Array
+
+clevertap.pushProfile(profileUpdate);
+```
+
+```kotlin Kotlin
+val profileUpdate = HashMap<String, Any>()
+profileUpdate["Name"] = "Jack Montana"
+profileUpdate["Identity"] = 61026032
+profileUpdate["Email"] = "jack@gmail.com"
+profileUpdate["Phone"] = "+14155551234"
+profileUpdate["Gender"] = "M"
+profileUpdate["Employed"] = "Y"
+profileUpdate["Education"] = "Graduate"
+profileUpdate["Married"] = "Y"
+profileUpdate["DOB"] = Date()
+profileUpdate["Age"] = 28
+profileUpdate["Tz"] = "Asia/Kolkata"
+profileUpdate["Photo"] = "www.foobar.com/image.jpeg"
+
+profileUpdate["MSG-email"] = false
+profileUpdate["MSG-push"] = true
+profileUpdate["MSG-sms"] = false
+
+val stuff = ArrayList<String>()
+stuff.add("bag")
+stuff.add("shoes")
+profileUpdate["MyStuff"] = stuff
+
+clevertap?.pushProfile(profileUpdate)
+```
+
+</CodeGroup>
+
+## Standard profile properties
+
+These property keys are recognized by CleverTap and populate the user's demographic record on the dashboard.
+
+| Property | Type | Accepted values |
+|---|---|---|
+| `Name` | String | Any string |
+| `Identity` | String or Number | Unique identifier for the user |
+| `Email` | String | Valid email address |
+| `Phone` | String | E.164 format, starting with `+` |
+| `Gender` | String | `M` or `F` |
+| `Employed` | String | `Y` or `N` |
+| `Education` | String | `Graduate`, `College`, or `School` |
+| `Married` | String | `Y` or `N` |
+| `DOB` | Date | Java `Date` object |
+| `Age` | Number | Integer; not required when `DOB` is set |
+| `Tz` | String | Timezone abbreviation, full name, or offset (e.g. `GMT-8:00`) |
+| `Photo` | String | URL to a profile image |
+
+## Notification channel opt-in/out (MSG- properties)
+
+The `MSG-` prefixed properties control which notification channels the user has opted into. Set them to `true` to enable and `false` to disable.
+
+| Property | Channel |
+|---|---|
+| `MSG-email` | Email notifications |
+| `MSG-push` | Push notifications |
+| `MSG-sms` | SMS notifications |
+
+## Multi-value profile properties
+
+When a profile property holds a list of values (for example, a set of interests or tags), use the multi-value APIs to add and remove individual items without overwriting the entire list.
+
+<CodeGroup>
+
+```java Java
+// Add a single value to a multi-value property
+clevertap.addMultiValueForKey("Hobbies", "Cooking");
+
+// Add multiple values at once
+ArrayList<String> hobbies = new ArrayList<>();
+hobbies.add("Reading");
+hobbies.add("Hiking");
+clevertap.addMultiValuesForKey("Hobbies", hobbies);
+
+// Remove a single value
+clevertap.removeMultiValueForKey("Hobbies", "Cooking");
+
+// Replace all values for the key
+ArrayList<String> newHobbies = new ArrayList<>();
+newHobbies.add("Cycling");
+newHobbies.add("Photography");
+clevertap.setMultiValuesForKey("Hobbies", newHobbies);
+```
+
+```kotlin Kotlin
+// Add a single value to a multi-value property
+clevertap?.addMultiValueForKey("Hobbies", "Cooking")
+
+// Add multiple values at once
+val hobbies = arrayListOf("Reading", "Hiking")
+clevertap?.addMultiValuesForKey("Hobbies", hobbies)
+
+// Remove a single value
+clevertap?.removeMultiValueForKey("Hobbies", "Cooking")
+
+// Replace all values for the key
+val newHobbies = arrayListOf("Cycling", "Photography")
+clevertap?.setMultiValuesForKey("Hobbies", newHobbies)
+```
+
+</CodeGroup>
+
+## Increment and decrement profile values
+
+For numeric profile properties, use `incrementValue` and `decrementValue` to adjust values without first reading the current value.
+
+<CodeGroup>
+
+```java Java
+clevertap.incrementValue("Score", 10);
+clevertap.decrementValue("Credits", 5);
+```
+
+```kotlin Kotlin
+clevertap?.incrementValue("Score", 10)
+clevertap?.decrementValue("Credits", 5)
+```
+
+</CodeGroup>
+
+## Multiple users on the same device
+
+When a different user signs in on a device that already has a CleverTap profile, call `onUserLogin` instead of `pushProfile`. The SDK creates a new profile (or retrieves an existing one if the identity matches) and switches the active session to that profile.
+
+At least one of `Identity`, `Email`, `FBID`, or `GPID` is required.
+
+<CodeGroup>
+
+```java Java
+HashMap<String, Object> profileUpdate = new HashMap<String, Object>();
+profileUpdate.put("Name", "Jack Montana");
+profileUpdate.put("Identity", 61026032);
+profileUpdate.put("Email", "jack@gmail.com");
+profileUpdate.put("Phone", "+14155551234");
+profileUpdate.put("Gender", "M");
+profileUpdate.put("Employed", "Y");
+profileUpdate.put("Education", "Graduate");
+profileUpdate.put("Married", "Y");
+profileUpdate.put("DOB", new Date());
+profileUpdate.put("Age", 28);
+profileUpdate.put("MSG-email", false);
+profileUpdate.put("MSG-push", true);
+profileUpdate.put("MSG-sms", false);
+
+cleverTapAPI.onUserLogin(profileUpdate);
+```
+
+```kotlin Kotlin
+val profileUpdate = HashMap<String, Any>()
+profileUpdate["Name"] = "Jack Montana"
+profileUpdate["Identity"] = 61026032
+profileUpdate["Email"] = "jack@gmail.com"
+profileUpdate["Phone"] = "+14155551234"
+profileUpdate["Gender"] = "M"
+profileUpdate["Employed"] = "Y"
+profileUpdate["Education"] = "Graduate"
+profileUpdate["Married"] = "Y"
+profileUpdate["DOB"] = Date()
+profileUpdate["Age"] = 28
+profileUpdate["MSG-email"] = false
+profileUpdate["MSG-push"] = true
+profileUpdate["MSG-sms"] = false
+
+cleverTapAPI.onUserLogin(profileUpdate)
+```
+
+</CodeGroup>
+
+## Opt out of event tracking
+
+Call `setOptOut(true)` to stop sending any events for the current user. Call `setOptOut(false)` to re-enable tracking.
+
+<CodeGroup>
+
+```java Java
+// Opt the user out of all tracking
+clevertap.setOptOut(true);
+
+// Opt the user back in
+clevertap.setOptOut(false);
+```
+
+```kotlin Kotlin
+// Opt the user out of all tracking
+clevertap?.setOptOut(true)
+
+// Opt the user back in
+clevertap?.setOptOut(false)
+```
+
+</CodeGroup>
+
+For GDPR scenarios where you need to stop user-initiated event tracking but still allow critical system events (such as app installs or push registration), use the two-argument overload.
+
+<CodeGroup>
+
+```java Java
+// Opt out of tracking, but still send critical system events (GDPR compliant)
+clevertap.setOptOut(true, true);
+
+// Full opt-out: no events at all
+clevertap.setOptOut(true, false);
+
+// Opt back in
+clevertap.setOptOut(false, true);
+```
+
+```kotlin Kotlin
+// Opt out of tracking, but still send critical system events (GDPR compliant)
+clevertap?.setOptOut(true, true)
+
+// Full opt-out: no events at all
+clevertap?.setOptOut(true, false)
+
+// Opt back in
+clevertap?.setOptOut(false, true)
+```
+
+</CodeGroup>

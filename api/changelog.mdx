@@ -1,0 +1,112 @@
+---
+title: "CleverTap Android SDK changelog"
+description: "Version history for the CleverTap Android SDK with notable features, breaking changes, improvements, and bug fixes for each recent release."
+---
+
+This page summarizes the most recent releases of the CleverTap Android SDK (`clevertap-android-sdk`). Each entry lists the version number, release date, and the key changes shipped in that release. The full changelog is maintained in the repository at [`docs/CTCORECHANGELOG.md`](https://github.com/CleverTap/clevertap-android-sdk/blob/master/docs/CTCORECHANGELOG.md).
+
+<Note>
+  The CleverTap Android SDK follows semantic versioning. Major version increments signal breaking API or behavioral changes. Minor versions add new features in a backward-compatible way. Patch releases contain bug fixes only.
+</Note>
+
+---
+
+### Version 8.1.0 — April 17, 2026
+
+#### New features
+- **Picture-in-Picture in-app notifications.** Adds support for compact, draggable floating in-app windows that overlay app content. Supports image, GIF, and video media with expand/collapse controls and a nine-point snap grid for drag-to-reposition. Video playback requires AndroidX Media3 dependencies.
+- **GIF and video for all in-app templates.** All in-app notification templates now support GIF and video media for richer experiences.
+- **`CleverTapAPI#unmute()`.** New method that immediately resumes event tracking and network operations without waiting for the backend-set mute period to expire.
+
+#### Breaking changes
+- **Minimum SDK version raised to API 23 (Android 6.0).** Apps targeting API levels below 23 cannot integrate this version of the SDK.
+
+#### Improvements
+- **App Inbox default media view.** Adds a fallback media view that renders images, GIFs, video posters, and audio thumbnails at their natural aspect ratio when the backend does not provide a media orientation.
+- **Modern network monitoring.** Replaces deprecated network APIs with a new `NetworkMonitor` implementation that includes captive portal detection.
+- **ExoPlayer deprecated.** `com.google.android.exoplayer2` support is deprecated. Migrate to `androidx.media3` before v9.0.0, when ExoPlayer support will be removed.
+
+#### Bug fixes
+- Fixes an `IndexOutOfBoundsException` in file cleanup caused by a non-thread-safe collection.
+
+---
+
+### Version 8.0.0 — February 20, 2026
+
+#### New features
+- **Android 16 support.** SDK is now compliant with Android 16 requirements.
+- **Enhanced push delivery tracking.** Tracks image download failure reasons alongside `wzrk_bpds` for better push notification delivery insights.
+- **In-app deep link attribution.** Captures deep link URLs in in-app notification click events for consistent attribution with push notifications. Supports button-level and template-level deep links.
+
+#### Improvements
+- Removes all `printStackTrace` calls across the SDK to address security vulnerability concerns.
+- Moves Install Referrer processing off the main thread to prevent ANRs.
+
+#### Bug fixes
+- Fixes a race condition that could cause an `Activity` `NullPointerException`.
+
+---
+
+### Version 7.8.0 — January 22, 2026
+
+#### New features
+- **Nested object ingestion.** Adds support for nested objects in both event and profile properties for richer, more structured analytics. Contact the CleverTap team to enable this for your account.
+- **Inaction in-app notifications.** Supports triggering in-app messages when a user does not perform an expected action within a configurable window (1–1200 seconds). Enables re-engagement scenarios such as cart abandonment reminders.
+
+#### Bug fixes
+- Fixes an `AbstractMethodError` related to `setTheme` for `InAppNotificationActivity`.
+
+---
+
+### Version 7.7.1 — December 2, 2025
+
+#### New features
+- Adds public method variants to fetch A/B experiment variants for the current user.
+
+#### Bug fixes
+- Fixes an issue where gradient backgrounds and other HTML send-test flows were not rendering correctly.
+
+---
+
+### Version 7.7.0 — November 21, 2025
+
+#### New features
+- **Complete data encryption.** Full encryption of all data stored by the SDK. See the [Data Encryption guide](https://github.com/CleverTap/clevertap-android-sdk/blob/master/docs/EXAMPLES.md#encryption-of-data-stored-in-the-sdk) for setup instructions.
+- **Delayed in-app notifications.** Configurable delay (1–1200 seconds) before an in-app message is displayed after its trigger event fires.
+- **Universal in-app previews.** Preview all in-app notification types directly from the CleverTap dashboard before launching a campaign.
+- **Non-disruptive foreground push.** Adding `wzrk_sif: true` to a push payload delivers the notification silently to the tray when the app is in the foreground.
+- **Enhanced in-app dismissal control.** New overload `discardInAppNotifications(dismissInAppIfVisible: Boolean)` immediately dismisses the currently visible in-app when called with `true`.
+
+#### Bug fixes
+- Fixes a `StringIndexOutOfBoundsException` caused by invalid color values in in-app payloads ([#888](https://github.com/CleverTap/clevertap-android-sdk/issues/888)).
+
+---
+
+### Version 7.6.0 — October 17, 2025
+
+#### New features
+- Adds `wzrk_sticky: true/false` to configure sticky push notifications on Android 14 and above.
+- Adds `wzrk_dismiss` (value in seconds) to automatically dismiss push notifications after a set time on Android 8 and above.
+
+#### Bug fixes
+- Removes unintended padding around the Toolbar in `CTInboxActivity` for edge-to-edge layouts ([#873](https://github.com/CleverTap/clevertap-android-sdk/issues/873)).
+
+---
+
+### Version 7.5.0 — July 11, 2025
+
+#### New features
+- **Linked content in Native Display units.** Supports linked content within Display Unit campaigns for richer interactive experiences.
+- **Encryption in transit.** All SDK network communications are now encrypted in transit. See the [network encryption guide](https://github.com/CleverTap/clevertap-android-sdk/blob/master/docs/EXAMPLES.md#encryption-over-network) for details.
+- **GDPR opt-out improvement.** New option to allow critical system events while respecting the user's GDPR opt-out choice.
+- **GIF in standard push.** GIF images now display in Android Standard Push Notifications on Android 14 (API 34) and above.
+- **Push Primer callback enhancements.** `onDismissed` now includes `actionExtras` with `wzrk_c2a` and `wzrk_id` when a Push Primer button is interacted with. `onPushPermissionResponse(false)` is now fired for negative button interactions (for example, "No Thanks").
+
+#### Bug fixes
+- Fixes an issue where interacting with the Push Primer in-app could raise an unintended `Notification Clicked` event.
+- Fixes a `ConcurrentModificationException` in `notifyCleverTapIDChanged`.
+- Fixes a `TooManyRequestsException` by upgrading `androidx.work:work-runtime` to `2.10.2` ([#810](https://github.com/CleverTap/clevertap-android-sdk/issues/810)).
+
+---
+
+For older releases, see the [full changelog on GitHub](https://github.com/CleverTap/clevertap-android-sdk/blob/master/docs/CTCORECHANGELOG.md).

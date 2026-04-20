@@ -1,0 +1,136 @@
+---
+title: "ActivityLifecycleCallback setup reference"
+description: "Register the CleverTap lifecycle callback to enable automatic session tracking, notification open detection, in-app display, and deep link handling."
+---
+
+`ActivityLifecycleCallback` hooks into the Android `Application.ActivityLifecycleCallbacks` system to give the CleverTap SDK visibility into every activity transition in your app. Without this registration the SDK cannot detect when the app moves to the foreground, cannot show in-app notifications, cannot handle notification-driven deep links, and cannot accurately track session boundaries. This is one of the most fundamental integration steps for the CleverTap Android SDK.
+
+The class provides two static `register` methods. Both are idempotent: calling `register` more than once has no effect after the first successful registration.
+
+## Methods
+
+### `register(Application)`
+
+Registers the lifecycle callback using the default CleverTap instance. The SDK reads account credentials from `AndroidManifest.xml` and assigns an anonymous device ID to the user.
+
+<ParamField path="application" type="Application" required>
+  Your app's `Application` instance. Must not be `null`. If a `null` value or an incompatible system API version is detected, registration is skipped with a log warning.
+</ParamField>
+
+---
+
+### `register(Application, String cleverTapID)`
+
+Registers the lifecycle callback and immediately associates the session with a custom CleverTap ID. Use this overload when you have a known user identifier at app launch time and have enabled custom IDs in your configuration.
+
+<ParamField path="application" type="Application" required>
+  Your app's `Application` instance.
+</ParamField>
+
+<ParamField path="cleverTapID" type="String" required>
+  A custom identifier managed by your application. This value is forwarded to `CleverTapAPI.onActivityCreated` and `CleverTapAPI.onActivityResumed` on every activity transition.
+</ParamField>
+
+---
+
+## What the callback enables
+
+Registering `ActivityLifecycleCallback` unlocks the following SDK capabilities:
+
+- **Session tracking** — The SDK detects foreground/background transitions and records session start and end times accurately.
+- **App Launched event** — The SDK automatically sends an `App Launched` event when the app enters the foreground for the first time in a session.
+- **Notification open tracking** — When an activity is created from a CleverTap push notification, the SDK parses the `Intent` extras and records the Notification Clicked event without extra code in each Activity.
+- **In-app notification display** — In-app messages are evaluated and shown on `onActivityResumed`, giving the SDK a reliable attachment point for overlays.
+- **Deep link tracking** — Launch deep links containing CleverTap UTM parameters are parsed in `onActivityCreated` and attributed automatically.
+
+---
+
+## Integration
+
+<Warning>
+  Call `ActivityLifecycleCallback.register()` in `Application.onCreate()`, **before** `super.onCreate()` completes, and before any other CleverTap API calls. Registering later in the lifecycle may cause missed sessions, dropped in-app notifications, and incorrect notification open attribution.
+</Warning>
+
+### Application subclass approach (recommended)
+
+Extend `Application` and register in `onCreate`. This is the standard approach and ensures the callback is registered as early as possible in the process lifecycle.
+
+<CodeGroup>
+
+```java java
+import android.app.Application;
+import com.clevertap.android.sdk.ActivityLifecycleCallback;
+import com.clevertap.android.sdk.CleverTapAPI;
+
+public class MyApplication extends Application {
+
+    @Override
+    public void onCreate() {
+        // Register BEFORE super.onCreate()
+        ActivityLifecycleCallback.register(this);
+        super.onCreate();
+
+        // Optional: configure log level
+        CleverTapAPI.setDebugLevel(CleverTapAPI.LogLevel.DEBUG);
+    }
+}
+```
+
+```kotlin kotlin
+import android.app.Application
+import com.clevertap.android.sdk.ActivityLifecycleCallback
+import com.clevertap.android.sdk.CleverTapAPI
+
+class MyApplication : Application() {
+
+    override fun onCreate() {
+        // Register BEFORE super.onCreate()
+        ActivityLifecycleCallback.register(this)
+        super.onCreate()
+
+        // Optional: configure log level
+        CleverTapAPI.setDebugLevel(CleverTapAPI.LogLevel.DEBUG)
+    }
+}
+```
+
+</CodeGroup>
+
+Reference your custom Application class in `AndroidManifest.xml`:
+
+```xml xml
+<application
+    android:name=".MyApplication"
+    ...>
+```
+
+---
+
+### With a custom CleverTap ID
+
+If you have a stable user identifier available at launch (for example, from a persisted login session), pass it directly to the `register` call. The SDK will associate all activity events with this identity from the very first activity transition.
+
+<CodeGroup>
+
+```java java
+@Override
+public void onCreate() {
+    String userId = myPrefs.getString("user_id", null);
+    ActivityLifecycleCallback.register(this, userId);
+    super.onCreate();
+}
+```
+
+```kotlin kotlin
+override fun onCreate() {
+    val userId = myPrefs.getString("user_id", null)
+    ActivityLifecycleCallback.register(this, userId)
+    super.onCreate()
+}
+```
+
+</CodeGroup>
+
+<Note>
+  The `registered` field on `ActivityLifecycleCallback` is `public` and can be read to check whether registration has already taken place, though in practice the idempotency guard inside `register()` makes this unnecessary.
+</Note>

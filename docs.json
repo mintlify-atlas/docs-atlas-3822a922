@@ -1,122 +1,102 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "CleverTap Android SDK",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#6c3c84",
+    "light": "#b49cc2",
+    "dark": "#ddd4e4"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/63561f57-2b60-442e-bed8-48741a972a7b.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/CleverTap/clevertap-android-sdk"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/CleverTap/clevertap-android-sdk"
+    }
+  },
   "navigation": {
     "tabs": [
       {
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "initialization"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "guides/event-tracking",
+              "guides/user-profiles",
+              "guides/push-notifications",
+              "guides/in-app-notifications",
+              "guides/app-inbox"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Advanced",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "guides/variables",
+              "guides/custom-templates",
+              "guides/geofence",
+              "guides/push-templates",
+              "guides/proxy-domain"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Extensions",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/huawei-push",
+              "guides/rendermax"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core API",
             "pages": [
-              "api-reference/introduction"
+              "api/clevertap-api",
+              "api/clevertap-instance-config",
+              "api/activity-lifecycle-callback"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Notifications & Messaging",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/push-notification-api",
+              "api/in-app-notification-api",
+              "api/inbox-api"
+            ]
+          },
+          {
+            "group": "Feature APIs",
+            "pages": [
+              "api/variables-api",
+              "api/geofence-api",
+              "api/display-units-api"
+            ]
+          },
+          {
+            "group": "Callbacks & Listeners",
+            "pages": [
+              "api/listeners",
+              "api/changelog"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

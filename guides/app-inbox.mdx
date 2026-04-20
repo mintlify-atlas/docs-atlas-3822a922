@@ -1,0 +1,360 @@
+---
+title: "Build an App Inbox with CleverTap"
+description: "Add the App Inbox to your Android app: install dependencies, initialize the inbox, customize styling, handle click callbacks, and manage messages."
+---
+
+The CleverTap App Inbox gives users a persistent feed of messages inside your app — similar to a notification centre. Unlike push notifications, inbox messages stay available until you or the user explicitly deletes them. CleverTap provides a ready-made inbox activity with customizable styling, or you can build your own UI on top of the underlying message APIs.
+
+## Dependencies
+
+Add the following to your module-level `build.gradle`. The first five are required; ExoPlayer or AndroidX Media3 are only needed if you want to support audio and video inbox messages.
+
+```groovy build.gradle
+// Required
+implementation "androidx.appcompat:appcompat:1.7.0"
+implementation "androidx.recyclerview:recyclerview:1.3.2"
+implementation "androidx.viewpager:viewpager:1.0.0"
+implementation "com.google.android.material:material:1.12.0"
+implementation "com.github.bumptech.glide:glide:4.12.0"
+
+// Optional: ExoPlayer for audio/video inbox messages (legacy)
+implementation "com.google.android.exoplayer:exoplayer:2.19.1"
+implementation "com.google.android.exoplayer:exoplayer-hls:2.19.1"
+implementation "com.google.android.exoplayer:exoplayer-ui:2.19.1"
+```
+
+<Note>
+CleverTap supports AndroidX Media3 from SDK v7.0.0+ as a replacement for the deprecated ExoPlayer libraries. To migrate, swap the ExoPlayer dependencies for their Media3 equivalents.
+</Note>
+
+**ExoPlayer to AndroidX Media3 migration**
+
+| Old dependency | New dependency |
+|---|---|
+| `com.google.android.exoplayer:exoplayer:2.19.1` | `androidx.media3:media3-exoplayer:1.4.0` |
+| `com.google.android.exoplayer:exoplayer-hls:2.19.1` | `androidx.media3:media3-exoplayer-hls:1.4.0` |
+| `com.google.android.exoplayer:exoplayer-ui:2.19.1` | `androidx.media3:media3-ui:1.4.0` |
+
+## Initialization
+
+Implement `CTInboxListener` on your activity, set it on the CleverTap instance, then call `initializeInbox`. The SDK will call back on `inboxDidInitialize()` when the inbox is ready and on `inboxMessagesDidUpdate()` whenever messages change.
+
+<CodeGroup>
+
+```java Java
+import com.clevertap.android.sdk.inbox.CTInboxActivity;
+import com.clevertap.android.sdk.CTInboxListener;
+import com.clevertap.android.sdk.CTInboxStyleConfig;
+import com.clevertap.android.sdk.CleverTapAPI;
+
+public class MainActivity extends AppCompatActivity implements CTInboxListener {
+
+    private CleverTapAPI cleverTapDefaultInstance;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        cleverTapDefaultInstance = CleverTapAPI.getDefaultInstance(this);
+        if (cleverTapDefaultInstance != null) {
+            // Register the inbox listener
+            cleverTapDefaultInstance.setCTNotificationInboxListener(this);
+            // Trigger initialization
+            cleverTapDefaultInstance.initializeInbox();
+        }
+    }
+
+    @Override
+    public void inboxDidInitialize() {
+        // Inbox is ready — safe to call showAppInbox() here
+    }
+
+    @Override
+    public void inboxMessagesDidUpdate() {
+        // Called when messages are added, deleted, or read
+    }
+}
+```
+
+```kotlin Kotlin
+import com.clevertap.android.sdk.inbox.CTInboxActivity
+import com.clevertap.android.sdk.CTInboxListener
+import com.clevertap.android.sdk.CTInboxStyleConfig
+import com.clevertap.android.sdk.CleverTapAPI
+
+class MainActivity : AppCompatActivity(), CTInboxListener {
+
+    private var cleverTapDefaultInstance: CleverTapAPI? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        cleverTapDefaultInstance = CleverTapAPI.getDefaultInstance(this)
+        cleverTapDefaultInstance?.apply {
+            setCTNotificationInboxListener(this@MainActivity)
+            initializeInbox()
+        }
+    }
+
+    override fun inboxDidInitialize() {
+        // Inbox is ready — safe to call showAppInbox() here
+    }
+
+    override fun inboxMessagesDidUpdate() {
+        // Called when messages are added, deleted, or read
+    }
+}
+```
+
+</CodeGroup>
+
+## Showing the inbox
+
+Call `showAppInbox()` with an optional `CTInboxStyleConfig` to open the built-in inbox activity. Call it from inside `inboxDidInitialize()` or from a button's click listener after initialization has completed.
+
+<CodeGroup>
+
+```java Java
+@Override
+public void inboxDidInitialize() {
+    ArrayList<String> tabs = new ArrayList<>();
+    tabs.add("Promotions");
+    tabs.add("Offers");
+    tabs.add("Others"); // Up to 2 tabs are supported; additional tabs are ignored
+
+    CTInboxStyleConfig styleConfig = new CTInboxStyleConfig();
+    styleConfig.setFirstTabTitle("First Tab");       // Default is "ALL"
+    styleConfig.setTabs(tabs);                       // Omit if you don't want tabs
+    styleConfig.setTabBackgroundColor("#FF0000");    // Hex string only
+    styleConfig.setSelectedTabIndicatorColor("#0000FF");
+    styleConfig.setSelectedTabColor("#000000");
+    styleConfig.setUnselectedTabColor("#FFFFFF");
+    styleConfig.setBackButtonColor("#FF0000");
+    styleConfig.setNavBarTitleColor("#FF0000");
+    styleConfig.setNavBarTitle("MY INBOX");
+    styleConfig.setNavBarColor("#FFFFFF");
+    styleConfig.setInboxBackgroundColor("#00FF00");
+
+    // Open with custom style
+    cleverTapDefaultInstance.showAppInbox(styleConfig);
+
+    // OR open with the default style
+    // cleverTapDefaultInstance.showAppInbox();
+}
+```
+
+```kotlin Kotlin
+override fun inboxDidInitialize() {
+    val tabs = arrayListOf("Promotions", "Offers", "Others")
+
+    val styleConfig = CTInboxStyleConfig().apply {
+        setFirstTabTitle("First Tab")
+        setTabs(tabs)
+        setTabBackgroundColor("#FF0000")
+        setSelectedTabIndicatorColor("#0000FF")
+        setSelectedTabColor("#000000")
+        setUnselectedTabColor("#FFFFFF")
+        setBackButtonColor("#FF0000")
+        setNavBarTitleColor("#FF0000")
+        setNavBarTitle("MY INBOX")
+        setNavBarColor("#FFFFFF")
+        setInboxBackgroundColor("#00FF00")
+    }
+
+    // Open with custom style
+    cleverTapDefaultInstance?.showAppInbox(styleConfig)
+
+    // OR open with the default style
+    // cleverTapDefaultInstance?.showAppInbox()
+}
+```
+
+</CodeGroup>
+
+### CTInboxStyleConfig options
+
+| Method | Description |
+|---|---|
+| `setFirstTabTitle(String)` | Label for the "All messages" tab (default: `"ALL"`) |
+| `setTabs(ArrayList<String>)` | Category tabs (maximum 2) |
+| `setTabBackgroundColor(String)` | Hex color for the tab bar background |
+| `setSelectedTabIndicatorColor(String)` | Hex color for the active tab underline |
+| `setSelectedTabColor(String)` | Hex color for the active tab label |
+| `setUnselectedTabColor(String)` | Hex color for inactive tab labels |
+| `setBackButtonColor(String)` | Hex color for the back arrow |
+| `setNavBarTitle(String)` | Title displayed in the navigation bar |
+| `setNavBarTitleColor(String)` | Hex color for the navigation bar title |
+| `setNavBarColor(String)` | Hex color for the navigation bar background |
+| `setInboxBackgroundColor(String)` | Hex color for the inbox list background |
+
+## Dismissing the inbox
+
+<CodeGroup>
+
+```java Java
+cleverTapDefaultInstance.dismissAppInbox();
+```
+
+```kotlin Kotlin
+cleverTapDefaultInstance?.dismissAppInbox()
+```
+
+</CodeGroup>
+
+## Item and button click callbacks
+
+Implement `InboxMessageListener` and override `onInboxItemClicked` to handle taps on inbox messages and their call-to-action buttons.
+
+The callback receives:
+- `message` — the `CTInboxMessage` object that was tapped
+- `contentPageIndex` — for carousel templates, the page index (0-based); always `0` for non-carousel
+- `buttonIndex` — the index of the CTA button clicked (`0`, `1`, or `2`); `-1` means the message body was tapped
+
+<CodeGroup>
+
+```java Java
+@Override
+public void onInboxItemClicked(CTInboxMessage message, int contentPageIndex, int buttonIndex) {
+    List<CTInboxMessageContent> inboxMessageContentList = message.getInboxMessageContents();
+    CTInboxMessageContent messageContentObject = inboxMessageContentList.get(contentPageIndex);
+
+    if (buttonIndex != -1) {
+        // A CTA button was tapped
+        try {
+            JSONObject buttonObject = (JSONObject) messageContentObject.getLinks().get(buttonIndex);
+            String buttonType = buttonObject.getString("type");
+            // buttonType is one of: "url", "copy", or "kv"
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    } else {
+        // The message body was tapped
+        String templateType = message.type;
+    }
+}
+```
+
+```kotlin Kotlin
+override fun onInboxItemClicked(message: CTInboxMessage, contentPageIndex: Int, buttonIndex: Int) {
+    val messageContentObject = message.inboxMessageContents[contentPageIndex]
+
+    if (buttonIndex != -1) {
+        // A CTA button was tapped
+        try {
+            val buttonObject = messageContentObject.links[buttonIndex] as JSONObject
+            val buttonType = buttonObject.getString("type")
+            // buttonType is one of: "url", "copy", or "kv"
+        } catch (t: Throwable) {
+            t.printStackTrace()
+        }
+    } else {
+        // The message body was tapped
+        val templateType = message.type
+    }
+}
+```
+
+</CodeGroup>
+
+### Button types
+
+| Type | Behavior |
+|---|---|
+| `url` | Opens the deep link or URL associated with the button |
+| `copy` | Copies the associated text to the clipboard |
+| `kv` | Delivers a custom key-value payload for your app to handle |
+
+For KV buttons specifically, you can also implement `InboxMessageButtonListener` to receive the key-value map directly.
+
+<CodeGroup>
+
+```java Java
+@Override
+public void onInboxButtonClick(HashMap<String, String> hashMap) {
+    // Handle key-value payload from a KV button
+}
+```
+
+```kotlin Kotlin
+override fun onInboxButtonClick(hashMap: HashMap<String, String>) {
+    // Handle key-value payload from a KV button
+}
+```
+
+</CodeGroup>
+
+## Message management APIs
+
+Use these APIs when building a custom inbox UI or managing message state programmatically.
+
+<CodeGroup>
+
+```java Java
+// Get total message count
+cleverTapDefaultInstance.getInboxMessageCount();
+
+// Get unread message count
+cleverTapDefaultInstance.getInboxMessageUnreadCount();
+
+// Get all messages
+cleverTapDefaultInstance.getAllInboxMessages();
+
+// Get only unread messages
+cleverTapDefaultInstance.getUnreadInboxMessages();
+
+// Get a specific message by ID
+cleverTapDefaultInstance.getInboxMessageForId(messageId);
+
+// Mark a message as read (by ID)
+cleverTapDefaultInstance.markReadInboxMessage(messageId);
+
+// Mark a message as read (by object)
+cleverTapDefaultInstance.markReadInboxMessage(message);
+
+// Delete a message (by ID)
+cleverTapDefaultInstance.deleteInboxMessage(messageId);
+
+// Delete a message (by object)
+cleverTapDefaultInstance.deleteInboxMessage(message);
+
+// Record a "Notification Viewed" event for a message
+cleverTapDefaultInstance.pushInboxNotificationViewedEvent(messageId);
+
+// Record a "Notification Clicked" event for a message
+cleverTapDefaultInstance.pushInboxNotificationClickedEvent(messageId);
+```
+
+```kotlin Kotlin
+// Get total message count
+cleverTapDefaultInstance?.getInboxMessageCount()
+
+// Get unread message count
+cleverTapDefaultInstance?.getInboxMessageUnreadCount()
+
+// Get all messages
+cleverTapDefaultInstance?.getAllInboxMessages()
+
+// Get only unread messages
+cleverTapDefaultInstance?.getUnreadInboxMessages()
+
+// Get a specific message by ID
+cleverTapDefaultInstance?.getInboxMessageForId(messageId)
+
+// Mark a message as read (by ID)
+cleverTapDefaultInstance?.markReadInboxMessage(messageId)
+
+// Mark a message as read (by object)
+cleverTapDefaultInstance?.markReadInboxMessage(message)
+
+// Delete a message (by ID)
+cleverTapDefaultInstance?.deleteInboxMessage(messageId)
+
+// Delete a message (by object)
+cleverTapDefaultInstance?.deleteInboxMessage(message)
+
+// Record a "Notification Viewed" event for a message
+cleverTapDefaultInstance?.pushInboxNotificationViewedEvent(messageId)
+
+// Record a "Notification Clicked" event for a message
+cleverTapDefaultInstance?.pushInboxNotificationClickedEvent(messageId)
+```
+
+</CodeGroup>

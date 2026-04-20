@@ -1,0 +1,448 @@
+---
+title: "In-app notification API reference for CleverTap"
+description: "Reference for CleverTapAPI in-app notification methods: queue control, prefetching, custom templates, button listeners, and CTLocalInApp push primer builder."
+---
+
+The `CleverTapAPI` class provides instance and static methods to manage the in-app notification lifecycle — suspending, resuming, or discarding the display queue; prefetching in-apps from the server; registering fully custom template definitions; and cleaning up preloaded assets. The `CTLocalInApp` builder is a companion utility that produces the `JSONObject` configuration required by `promptPushPrimer`.
+
+---
+
+## Queue control
+
+### `suspendInAppNotifications`
+
+```java
+public void suspendInAppNotifications()
+```
+
+Pauses the display of in-app notifications. Any notifications that would have been shown while suspended are queued and delivered after `resumeInAppNotifications()` is called.
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.suspendInAppNotifications();
+```
+
+```kotlin Kotlin
+cleverTapAPI.suspendInAppNotifications()
+```
+
+</CodeGroup>
+
+---
+
+### `resumeInAppNotifications`
+
+```java
+public void resumeInAppNotifications()
+```
+
+Resumes in-app notification display.
+
+- If `suspendInAppNotifications()` was active, all queued notifications are shown immediately, then normal display resumes.
+- If `discardInAppNotifications()` was active, only notifications triggered after this call are shown — queued notifications are not recovered.
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.resumeInAppNotifications();
+```
+
+```kotlin Kotlin
+cleverTapAPI.resumeInAppNotifications()
+```
+
+</CodeGroup>
+
+---
+
+### `discardInAppNotifications()`
+
+```java
+public void discardInAppNotifications()
+```
+
+Suspends the display of in-app notifications and **permanently discards** any notifications queued while suspended. Calling `resumeInAppNotifications()` afterwards resumes display for future events only.
+
+---
+
+### `discardInAppNotifications(boolean)`
+
+```java
+public void discardInAppNotifications(boolean dismissInAppIfVisible)
+```
+
+Same as `discardInAppNotifications()` with an option to also dismiss a currently visible in-app immediately.
+
+<ParamField path="dismissInAppIfVisible" type="boolean" required>
+  If `true`, the currently displayed in-app (if any) is dismissed immediately. If `false`, it remains on screen until the user closes it.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+// Discard queue and dismiss any currently visible in-app
+cleverTapAPI.discardInAppNotifications(true);
+```
+
+```kotlin Kotlin
+cleverTapAPI.discardInAppNotifications(true)
+```
+
+</CodeGroup>
+
+---
+
+## Prefetch
+
+### `fetchInApps`
+
+```java
+public void fetchInApps(FetchInAppsCallback callback)
+```
+
+Fetches in-app notifications from the CleverTap server. The callback is invoked when the fetch completes. Only the most recently registered callback is retained — calling this method again overwrites the previous callback.
+
+<ParamField path="callback" type="FetchInAppsCallback" required>
+  Callback invoked when the server request completes. Pass `null` to trigger a fetch without registering a new callback.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.fetchInApps(success -> {
+    Log.d("CT", "In-apps fetched: " + success);
+});
+```
+
+```kotlin Kotlin
+cleverTapAPI.fetchInApps { success ->
+    Log.d("CT", "In-apps fetched: $success")
+}
+```
+
+</CodeGroup>
+
+---
+
+## Custom templates
+
+### `registerCustomInAppTemplates` — static
+
+```java
+public static synchronized void registerCustomInAppTemplates(TemplateProducer producer)
+```
+
+Registers custom in-app templates produced by a `TemplateProducer`. Must be called **before** the `CleverTapAPI` instance is created. The recommended place is `Application.onCreate()`. This method may be called multiple times with different producers, but all produced template names must be unique.
+
+<ParamField path="producer" type="TemplateProducer" required>
+  A `TemplateProducer` that creates one or more `CustomTemplate` definitions.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+// In Application.onCreate()
+CleverTapAPI.registerCustomInAppTemplates(ctConfig ->
+    CustomTemplatesExtKt.templatesSet(
+        new CustomTemplate.TemplateBuilder()
+            .name("my_template")
+            .presenter()
+            .stringArgument("headline", "Default text")
+            .build()
+    )
+);
+```
+
+```kotlin Kotlin
+// In Application.onCreate()
+CleverTapAPI.registerCustomInAppTemplates {
+    setOf(
+        template {
+            name("my_template")
+            presenter()
+            stringArgument("headline", "Default text")
+        }
+    )
+}
+```
+
+</CodeGroup>
+
+---
+
+### `registerCustomInAppTemplates` — JSON overload — static
+
+```java
+public static synchronized void registerCustomInAppTemplates(
+    @NonNull String templatesJson,
+    @Nullable TemplatePresenter templatesPresenter,
+    @Nullable FunctionPresenter functionsPresenter
+)
+```
+
+Registers custom templates from a JSON definition string. Must be called before the `CleverTapAPI` instance is created.
+
+<ParamField path="templatesJson" type="String" required>
+  A JSON string containing one or more template definitions. See `JsonTemplatesProducer` for the expected format.
+</ParamField>
+<ParamField path="templatesPresenter" type="TemplatePresenter">
+  Presenter for templates of type `"template"`. Required if the JSON defines any `"template"` type entries.
+</ParamField>
+<ParamField path="functionsPresenter" type="FunctionPresenter">
+  Presenter for templates of type `"function"`. Required if the JSON defines any `"function"` type entries.
+</ParamField>
+
+---
+
+### `syncRegisteredInAppTemplates`
+
+```java
+public void syncRegisteredInAppTemplates()
+```
+
+Uploads all registered custom template definitions to the CleverTap dashboard. This method only works in a **debug build** where the current user profile is marked as a test profile in the dashboard.
+
+<Warning>Calling `syncRegisteredInAppTemplates()` in a production (release) build has no effect. The SDK logs a debug message indicating the app is not in development mode.</Warning>
+
+<CodeGroup>
+
+```java Java
+cleverTapAPI.syncRegisteredInAppTemplates();
+```
+
+```kotlin Kotlin
+cleverTapAPI.syncRegisteredInAppTemplates()
+```
+
+</CodeGroup>
+
+---
+
+## Listeners
+
+### `setInAppNotificationButtonListener`
+
+```java
+public void setInAppNotificationButtonListener(InAppNotificationButtonListener listener)
+```
+
+Registers a listener to receive callbacks when a button inside an in-app notification is tapped.
+
+<ParamField path="listener" type="InAppNotificationButtonListener" required>
+  Listener implementation. Pass `null` to remove the current listener.
+</ParamField>
+
+---
+
+## Resource management
+
+Both methods are annotated `@WorkerThread` and must be called from a background thread.
+
+### `clearInAppResources`
+
+```java
+@WorkerThread
+public void clearInAppResources(boolean expiredOnly)
+```
+
+Deletes preloaded images and GIFs used by client-side in-app notifications.
+
+<ParamField path="expiredOnly" type="boolean" required>
+  If `true`, only assets that are no longer needed by any scheduled in-app are removed. If `false`, all preloaded in-app image assets are removed.
+</ParamField>
+
+<CodeGroup>
+
+```java Java
+// Run on a background thread
+executor.execute(() -> cleverTapAPI.clearInAppResources(true));
+```
+
+```kotlin Kotlin
+// Run on a background thread
+executor.execute { cleverTapAPI.clearInAppResources(true) }
+```
+
+</CodeGroup>
+
+---
+
+### `clearFileResources`
+
+```java
+@WorkerThread
+public void clearFileResources(boolean expiredOnly)
+```
+
+Deletes all file types preloaded for SDK features including custom in-app templates, app functions, and variables.
+
+<ParamField path="expiredOnly" type="boolean" required>
+  If `true`, only files that are no longer needed are removed. If `false`, all preloaded file assets are removed.
+</ParamField>
+
+---
+
+## CTLocalInApp builder
+
+`CTLocalInApp.builder()` creates a `JSONObject` configuration for a local push-primer in-app notification. The builder is a fluent, step-based API that enforces required fields before optional ones. Pass the resulting `JSONObject` to `promptPushPrimer(JSONObject)`.
+
+### Step-by-step builder chain
+
+The builder enforces the following order: `setInAppType` → `setTitleText` → `setMessageText` → `followDeviceOrientation` → `setPositiveBtnText` → `setNegativeBtnText` → optional setters → `build()`.
+
+#### `setInAppType`
+
+<ParamField path="inAppType" type="InAppType" required>
+  The layout type for the primer. Accepts:
+  - `CTLocalInApp.InAppType.HALF_INTERSTITIAL` — a half-screen overlay with optional image support.
+  - `CTLocalInApp.InAppType.ALERT` — a compact alert-style dialog.
+</ParamField>
+
+#### `setTitleText`
+
+<ParamField path="titleText" type="String" required>
+  The heading text displayed at the top of the in-app.
+</ParamField>
+
+#### `setMessageText`
+
+<ParamField path="messageText" type="String" required>
+  The body text explaining why the user should allow notifications.
+</ParamField>
+
+#### `followDeviceOrientation`
+
+<ParamField path="deviceOrientation" type="boolean" required>
+  If `true`, the in-app adapts to both portrait and landscape orientations. If `false`, portrait only.
+</ParamField>
+
+#### `setPositiveBtnText`
+
+<ParamField path="positiveBtnText" type="String" required>
+  Label for the confirm button (for example `"Allow"`).
+</ParamField>
+
+#### `setNegativeBtnText`
+
+<ParamField path="negativeBtnText" type="String" required>
+  Label for the dismiss button (for example `"Cancel"`).
+</ParamField>
+
+### Optional styling setters
+
+After `setNegativeBtnText`, the following setters are available in any order before calling `build()`:
+
+<ParamField path="setBackgroundColor(String)" type="String">
+  Hex color code for the in-app background (for example `"#FFFFFF"`).
+</ParamField>
+
+<ParamField path="setBtnBorderColor(String)" type="String">
+  Hex color code for the button border.
+</ParamField>
+
+<ParamField path="setTitleTextColor(String)" type="String">
+  Hex color code for the title text.
+</ParamField>
+
+<ParamField path="setMessageTextColor(String)" type="String">
+  Hex color code for the message body text.
+</ParamField>
+
+<ParamField path="setBtnTextColor(String)" type="String">
+  Hex color code for the text on both buttons.
+</ParamField>
+
+<ParamField path="setBtnBackgroundColor(String)" type="String">
+  Hex color code for the background of both buttons.
+</ParamField>
+
+<ParamField path="setImageUrl(String url, String altText)" type="String">
+  URL of an image to display in `HALF_INTERSTITIAL` type in-apps. `altText` is an optional accessibility description for the image.
+</ParamField>
+
+<ParamField path="setFallbackToSettings(boolean)" type="boolean">
+  If `true`, and the OS permission dialog cannot be shown (permission permanently denied), the SDK routes the user to the app's notification settings.
+</ParamField>
+
+### `build()`
+
+Returns the fully constructed `JSONObject` to pass to `promptPushPrimer`.
+
+### Full example
+
+<CodeGroup>
+
+```java Java
+JSONObject jsonObject = CTLocalInApp.builder()
+    .setInAppType(CTLocalInApp.InAppType.HALF_INTERSTITIAL)
+    .setTitleText("Get Notified")
+    .setMessageText("Please enable notifications on your device to use Push Notifications.")
+    .followDeviceOrientation(true)
+    .setPositiveBtnText("Allow")
+    .setNegativeBtnText("Cancel")
+    .setBackgroundColor("#FFFFFF")
+    .setBtnBorderColor("#1C84FE")
+    .setTitleTextColor("#1C84FE")
+    .setMessageTextColor("#000000")
+    .setBtnTextColor("#FFFFFF")
+    .setImageUrl("https://example.com/icon.png", "Notification icon")
+    .setBtnBackgroundColor("#1C84FE")
+    .build();
+
+cleverTapAPI.promptPushPrimer(jsonObject);
+```
+
+```kotlin Kotlin
+val jsonObject = CTLocalInApp.builder()
+    .setInAppType(CTLocalInApp.InAppType.HALF_INTERSTITIAL)
+    .setTitleText("Get Notified")
+    .setMessageText("Please enable notifications on your device to use Push Notifications.")
+    .followDeviceOrientation(true)
+    .setPositiveBtnText("Allow")
+    .setNegativeBtnText("Cancel")
+    .setBackgroundColor("#FFFFFF")
+    .setBtnBorderColor("#1C84FE")
+    .setTitleTextColor("#1C84FE")
+    .setMessageTextColor("#000000")
+    .setBtnTextColor("#FFFFFF")
+    .setImageUrl("https://example.com/icon.png", "Notification icon")
+    .setBtnBackgroundColor("#1C84FE")
+    .build()
+
+cleverTapAPI.promptPushPrimer(jsonObject)
+```
+
+</CodeGroup>
+
+### Alert-style example
+
+<CodeGroup>
+
+```java Java
+JSONObject jsonObject = CTLocalInApp.builder()
+    .setInAppType(CTLocalInApp.InAppType.ALERT)
+    .setTitleText("Get Notified")
+    .setMessageText("Enable notifications to stay informed.")
+    .followDeviceOrientation(true)
+    .setPositiveBtnText("Allow")
+    .setNegativeBtnText("Cancel")
+    .build();
+
+cleverTapAPI.promptPushPrimer(jsonObject);
+```
+
+```kotlin Kotlin
+val jsonObject = CTLocalInApp.builder()
+    .setInAppType(CTLocalInApp.InAppType.ALERT)
+    .setTitleText("Get Notified")
+    .setMessageText("Enable notifications to stay informed.")
+    .followDeviceOrientation(true)
+    .setPositiveBtnText("Allow")
+    .setNegativeBtnText("Cancel")
+    .build()
+
+cleverTapAPI.promptPushPrimer(jsonObject)
+```
+
+</CodeGroup>
